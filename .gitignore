@@ -2,7 +2,6 @@
 *.d
 
 # Object files
-*.o
 *.ko
 *.obj
 *.elf
@@ -15,12 +14,6 @@
 # Precompiled Headers
 *.gch
 *.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
 
 # Shared objects (inc. Windows DLLs)
 *.dll
@@ -50,3 +43,5 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+.idea/*

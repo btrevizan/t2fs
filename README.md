@@ -1,2 +1,2 @@
-# t2fs
+# T2FS
 A File System implemented in C.
