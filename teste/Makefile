@@ -1,0 +1,23 @@
+CC=gcc
+LIB_DIR=../lib/
+INC_DIR=../include/
+BIN_DIR=../bin/
+SRC_DIR=../src/
+
+EXECUTABLES= _test
+
+all: $(EXECUTABLES)
+
+teste.o: teste.c teste.h
+	$(CC) -std=c99 -c teste.c -Wall
+
+_test: _test.c teste.o teste.h $(INC_DIR)t2fs.h \
+              $(LIB_DIR)libt2fs.a
+	$(CC) -std=c99 -o _test _test.c teste.o -L$(LIB_DIR) -lt2fs \
+	 -Wall
+
+run: all
+	for exec in $(EXECUTABLES); do ./$$exec; done
+
+clean:
+	rm -rf $(EXECUTABLES) teste.o
