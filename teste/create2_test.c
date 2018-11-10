@@ -118,6 +118,7 @@ int main() {
     for (int i = 0; i < max_dir_entries + 1; i++) {
       sprintf(name, "%d", i);
       handle = create2(name);
+      close2(handle);
     }
 
     assert("Deve retornar um erro ao tentar criar mais entradas de "
