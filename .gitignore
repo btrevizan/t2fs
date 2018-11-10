@@ -45,3 +45,18 @@ Mkfile.old
 dkms.conf
 
 .idea/*
+
+*.o
+/bin/*
+/teste/*
+!/teste/*.c
+!/teste/*.h
+!/teste/Makefile
+/lib/*
+!/lib/apidisk.o
+cmake-build-debug*
+CMakeLists.txt
+.idea/*
+.vscode/
+/exemplo/*
+!/exemplo/*.c
