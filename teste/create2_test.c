@@ -46,10 +46,10 @@ int main() {
     assert("Deve ser criada uma entrada no diretorio com o nome fornecido", 
            found);
 
-    assert("A entrada de diretório criada deve ser do tipo regular", 
+    assert("A entrada de diretorio criada deve ser do tipo regular", 
            found && dir_entry.fileType == TYPEVAL_REGULAR);
 
-    assert("A entrada de diretório criada deve ter 0 bytes de tamanho", 
+    assert("A entrada de diretorio criada deve ter 0 bytes de tamanho", 
            found && dir_entry.fileSize == 0);
 
 
@@ -61,7 +61,7 @@ int main() {
     char buffer[8];
     int bytes_read = read2(handle, buffer, 8);
 
-    assert("Se o arquivo ja existe, seu conteúdo eh removido", bytes_read == 0);
+    assert("Se o arquivo ja existe, seu conteudo eh removido", bytes_read == 0);
 
 
 
@@ -78,7 +78,7 @@ int main() {
 
     closedir2(dir_handle);
 
-    assert("Se o arquivo já existe, ele assume o tamanho de 0 bytes", 
+    assert("Se o arquivo ja existe, ele assume o tamanho de 0 bytes", 
            dir_entry.fileSize == 0);
 
 
@@ -122,7 +122,7 @@ int main() {
     }
 
     assert("Deve retornar um erro ao tentar criar mais entradas de "
-           "diretório do que o suportado", handle < 0);
+           "diretorio do que o suportado", handle < 0);
 
     end_test();
     

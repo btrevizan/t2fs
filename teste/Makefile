@@ -4,7 +4,7 @@ INC_DIR=../include/
 BIN_DIR=../bin/
 SRC_DIR=../src/
 
-EXECUTABLES= create2_test delete2_test open2_test close2_test
+EXECUTABLES= create2_test delete2_test open2_test close2_test read2_test
 
 all: $(EXECUTABLES)
 
@@ -29,6 +29,11 @@ open2_test: open2_test.c teste.o teste.h $(INC_DIR)t2fs.h \
 close2_test: close2_test.c teste.o teste.h $(INC_DIR)t2fs.h \
               $(LIB_DIR)libt2fs.a
 	$(CC) -std=c99 -o close2_test close2_test.c teste.o -L$(LIB_DIR) -lt2fs \
+	 -Wall
+
+read2_test: read2_test.c teste.o teste.h $(INC_DIR)t2fs.h \
+              $(LIB_DIR)libt2fs.a
+	$(CC) -std=c99 -o read2_test read2_test.c teste.o -L$(LIB_DIR) -lt2fs \
 	 -Wall
 
 run: all

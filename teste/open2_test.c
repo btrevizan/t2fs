@@ -10,16 +10,16 @@ int main() {
   FILE2 handle[10];
 
   handle[0] = open2("nao_existo");
-  assert("Se o arquivo não existe, retorna um erro", handle[0] < 0);
+  assert("Se o arquivo nao existe, retorna um erro", handle[0] < 0);
 
   handle[0] = open2(".");
-  assert("Deve retornar um erro se o filename referencia um diretório", 
+  assert("Deve retornar um erro se o filename referencia um diretorio", 
          handle[0] < 0);
 
   handle[0] = create2("file");
   close2(handle[0]);
   handle[0] = open2("file");
-  assert("O handle deve ser não-negativo", handle[0] >= 0);
+  assert("O handle deve ser nao-negativo", handle[0] >= 0);
 
   handle[1] = open2("file");
   assert("Deve ser possivel abrir o mesmo arquivo mais de uma vez", 
@@ -49,7 +49,7 @@ int main() {
   buffer[0] = '\0'; // buffer = ""
   handle[0] = open2("file");
   read2(handle[0], buffer, 8);
-  assert("O current pointer deve ser colocado na posição 0", 
+  assert("O current pointer deve ser colocado na posicao 0", 
          strcmp(buffer, "conteudo") == 0);
   
   close2(handle[0]);
@@ -66,7 +66,7 @@ int main() {
   
   ln2("dir_link", ".");
   handle[0] = open2("dir_link");
-  assert("Se o filename referencia um link para um diretório, deve retornar "
+  assert("Se o filename referencia um link para um diretorio, deve retornar "
          "um erro", handle[0] < 0);
 
   end_test();

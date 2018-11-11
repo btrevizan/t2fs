@@ -37,7 +37,7 @@ int main() {
 
   closedir2(dir_handle);
 
-  assert("A entrada no diretório deve ser removida", !found);
+  assert("A entrada no diretorio deve ser removida", !found);
 
 
 
