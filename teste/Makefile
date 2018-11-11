@@ -5,7 +5,7 @@ BIN_DIR=../bin/
 SRC_DIR=../src/
 
 EXECUTABLES= create2_test delete2_test open2_test close2_test read2_test \
-             write2_test truncate2_test
+             write2_test truncate2_test seek2_test
 
 all: $(EXECUTABLES)
 
@@ -46,6 +46,11 @@ truncate2_test: truncate2_test.c teste.o teste.h $(INC_DIR)t2fs.h \
               $(LIB_DIR)libt2fs.a
 	$(CC) -std=c99 -o truncate2_test truncate2_test.c teste.o -L$(LIB_DIR) \
 	-lt2fs -Wall
+
+seek2_test: seek2_test.c teste.o teste.h $(INC_DIR)t2fs.h \
+              $(LIB_DIR)libt2fs.a
+	$(CC) -std=c99 -o seek2_test seek2_test.c teste.o -L$(LIB_DIR) -lt2fs \
+	 -Wall
 
 run: all
 	for exec in $(EXECUTABLES); do cp -a t2fs_disk_template.dat t2fs_disk.dat; ./$$exec; done

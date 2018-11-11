@@ -24,7 +24,7 @@ int main() {
   seek2(handle, 0);
   int bytes_read = read2(handle, buffer, 8);
   assert("Deve realizar o truncamento corretamente", 
-         bytes_read == 5 && strncmp(buffer, "conte", 5));
+         bytes_read == 5 && strncmp(buffer, "conte", 5) == 0);
   
   // Obter a entrada no diretório
   DIR2 dir_handle = opendir2(".");
