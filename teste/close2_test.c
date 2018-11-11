@@ -10,7 +10,7 @@ int main() {
   int ret_code = close2(0);
   // assert(Fechar arquivo não aberto?)
   
-  int handle = create2("file");
+  FILE2 handle = create2("file");
   ret_code = close2(handle);
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 

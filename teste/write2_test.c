@@ -12,11 +12,11 @@ int main() {
   int ret_code = write2(0, "conteudo", 8);
   assert("Se o handle nao foi aberto, retorna um erro", ret_code < 0);
 
-  int handle = create2("file");
+  FILE2 handle = create2("file");
   ret_code = write2(handle, "conteudo", 8);
   assert("Deve retornar o numero de bytes escrito", ret_code == 8);
 
-  int handle2 = open2("file");
+  FILE2 handle2 = open2("file");
   read2(handle2, buffer, 8);
   assert("Deve fazer a escrita corretamente", 
          strncmp(buffer, "conteudo", 8) == 0);

@@ -13,7 +13,7 @@ int main() {
   assert("Se o handle nao foi aberto, retorna um erro", ret_code < 0);
 
   // Cria um arquivo com conteudo
-  int handle = create2("file");
+  FILE2 handle = create2("file");
   write2(handle, "conteudo", 8);
   close2(handle);
 
