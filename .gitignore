@@ -49,6 +49,7 @@ dkms.conf
 *.o
 /bin/*
 /teste/*
+!/teste/t2fs_disk_template.dat
 !/teste/*.c
 !/teste/*.h
 !/teste/Makefile
@@ -60,3 +61,4 @@ CMakeLists.txt
 .vscode/
 /exemplo/*
 !/exemplo/*.c
+/teste/test_template.c
