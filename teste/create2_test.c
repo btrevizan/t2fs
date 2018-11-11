@@ -125,5 +125,6 @@ int main() {
            "diretório do que o suportado", handle < 0);
 
     end_test();
+    
     return 0;
 }
