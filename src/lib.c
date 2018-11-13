@@ -123,7 +123,7 @@ int ln2(char *linkname, char *filename) {
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
 //int is_empty(const struct directory_entry *file);
-//int create(char *filename);
+//int create(char *filename, fcb *file);
 
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
@@ -177,15 +177,20 @@ int exists(char *filepath) {
     return resolve_path(filepath, &entry);
 }
 
-FILE2 insert(struct fcb file) {
-   for(int i = 0; i < N_OPEN_FILES; i++) {
-       if(open_files[i].is_valid == 0) {
-           open_files[i] = file;
+int get_free_handle() {
+    for(int i = 0; i < N_OPEN_FILES; i++) {
+       if(open_files[i].is_valid == 0)
            return i;
-       }
-   }
+    }
 
    return -1;
+}
+
+
+FILE2 insert(struct fcb file) {
+   int i = get_free_handle();
+   open_files[i] = file;
+   return i;
 }
 
 int set_current_pointer(DWORD offset, struct fcb *file) {
