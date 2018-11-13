@@ -15,10 +15,9 @@ static unsigned int CLUSTER_SIZE;
 
 int identify2 (char *name, int size) {
 	if(first_run == 1) t2fs_init();
-	return -1;
+	strncpy (name, "Bernardo Trevizan - 00285638\nEduarda Trindade - 00274709\nGabriel Haggstrom - 00228552", size);
+	return 0;
 }
-
-
 
 FILE2 create2 (char *filename) {
 	return -1;
