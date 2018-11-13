@@ -3,7 +3,7 @@
 #define N_OPEN_FILES 10
 #define FREE_CLUSTER 0x00000000
 #define BAD_CLUSTER 0xFFFFFFFE
-#define EOF 0xFFFFFFFF
+#define END_OF_FILE 0xFFFFFFFF
 
 struct directory_entry {
     struct t2fs_record record;
@@ -13,6 +13,7 @@ struct directory_entry {
 
 struct fcb {
     struct directory_entry dir_entry;
+    char is_valid;
 
     // current pointer broken into three components
     DWORD current_physical_cluster;     // 0 ... C - 1
