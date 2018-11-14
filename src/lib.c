@@ -15,10 +15,9 @@ static unsigned int CLUSTER_SIZE;
 
 int identify2 (char *name, int size) {
 	if(first_run == 1) t2fs_init();
-	return -1;
+	strncpy (name, "Bernardo Trevizan - 00285638\nEduarda Trindade - 00274709\nGabriel Haggstrom - 00228552", size);
+	return 0;
 }
-
-
 
 FILE2 create2 (char *filename) {
 	return -1;
@@ -36,13 +35,14 @@ FILE2 open2 (char *filename) {
 	return -1;
 }
 
-
-
 int close2 (FILE2 handle) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	open_files[handle].is_valid = 0;
+	return 0;
 }
-
-
 
 int read2 (FILE2 handle, char *buffer, int size) {
 	return -1;
@@ -63,7 +63,16 @@ int truncate2 (FILE2 handle) {
 
 
 int seek2 (FILE2 handle, DWORD offset) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	struct fcb file = open_files[handle];
+	if (set_current_pointer(offset, &file) < 0) return -1;
+
+	open_files[handle] = file;
+	
+	return 0;
 }
 
 
@@ -105,13 +114,26 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry) {
 
 
 int closedir2 (DIR2 handle) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	open_dirs[handle].is_valid = 0;
+	return 0;
 }
 
-
-
 int ln2(char *linkname, char *filename) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+	
+	if (strlen(filename) > CLUSTER_SIZE) return -1;
+
+	struct fcb file;
+	file.dir_entry.record.TypeVal = TYPEVAL_LINK;
+
+	if (create(filename, &file) < 0) return -1;
+	if (write(&file, filename, strlen(filename)) < 0) return -1;
+
+	return 0;
 }
 
 // -------------------------------------------------------------------------------------------------
