@@ -150,6 +150,7 @@ int ln2(char *linkname, char *filename) {
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
     if(handle >= N_OPEN_FILES) return -1;
+    if(open_files[handle].is_valid < 0) return -1;
     return 0;
 }
 
@@ -206,13 +207,6 @@ int get_free_handle() {
     }
 
    return -1;
-}
-
-
-FILE2 insert(struct fcb file) {
-   int i = get_free_handle();
-   open_files[i] = file;
-   return i;
 }
 
 int set_current_pointer(DWORD offset, struct fcb *file) {
