@@ -35,8 +35,6 @@ FILE2 open2 (char *filename) {
 	return -1;
 }
 
-
-
 int close2 (FILE2 handle) {
 	if(first_run == 1) t2fs_init();
 
@@ -45,8 +43,6 @@ int close2 (FILE2 handle) {
 	open_files[handle].is_valid = 0;
 	return 0;
 }
-
-
 
 int read2 (FILE2 handle, char *buffer, int size) {
 	return -1;
@@ -117,10 +113,18 @@ int closedir2 (DIR2 handle) {
 	return 0;
 }
 
-
-
 int ln2(char *linkname, char *filename) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+	
+	if (strlen(filename) > CLUSTER_SIZE) return -1;
+
+	struct fcb file;
+	file.dir_entry.record.TypeVal = TYPEVAL_LINK;
+
+	if (create(filename, &file) < 0) return -1;
+	if (write(&file, filename, strlen(filename)) < 0) return -1;
+
+	return 0;
 }
 
 // -------------------------------------------------------------------------------------------------
