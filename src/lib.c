@@ -63,7 +63,16 @@ int truncate2 (FILE2 handle) {
 
 
 int seek2 (FILE2 handle, DWORD offset) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	struct fcb file = open_files[handle];
+	if (set_current_pointer(offset, &file) < 0) return -1;
+
+	open_files[handle] = file;
+	
+	return 0;
 }
 
 
