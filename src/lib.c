@@ -38,7 +38,12 @@ FILE2 open2 (char *filename) {
 
 
 int close2 (FILE2 handle) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	open_files[handle].is_valid = 0;
+	return 0;
 }
 
 
@@ -104,7 +109,12 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry) {
 
 
 int closedir2 (DIR2 handle) {
-	return -1;
+	if(first_run == 1) t2fs_init();
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	open_dirs[handle].is_valid = 0;
+	return 0;
 }
 
 
