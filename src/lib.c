@@ -82,7 +82,7 @@ int close2 (FILE2 handle) {
         if(t2fs_init() < 0) return -1;
 
 	if(is_handle_valid(handle) < 0) return -1;
-    if(update_on_disc(&open_files[handle].dir_entry) < 0) return -1;
+    if(update_on_disk(&open_files[handle].dir_entry) < 0) return -1;
 
 	open_files[handle].is_valid = 0;
 	return 0;
