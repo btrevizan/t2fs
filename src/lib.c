@@ -95,7 +95,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
     if(size > file.dir_entry.record.bytesFileSize) return -1;
 
     unsigned int sector = get_current_physical_sector(&file);
-    char aux_buffer[SECTOR_SIZE];
+    unsigned char aux_buffer[SECTOR_SIZE];
 
     // Read current sector and adjust strncpy to start on current pointer
     if(read_sector(sector, aux_buffer) < 0) return -1;
@@ -104,7 +104,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
     if(n > size) n = size;
 
     unsigned int bytes_read = n;
-    strncpy(buffer, (aux_buffer + file.current_byte_on_sector), n);
+    strncpy(buffer, (const char *)(aux_buffer + file.current_byte_on_sector), n);
 
     // Read the rest, sector by sector
     while(bytes_read < size) {
@@ -116,7 +116,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
             // EOF
             if(next_cluster(&file) < 0) {
                 n = file.dir_entry.record.bytesFileSize - ((file.dir_entry.record.bytesFileSize / SECTOR_SIZE) * SECTOR_SIZE);
-                strncpy((buffer + bytes_read), aux_buffer, n);
+                strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
                 bytes_read += n;
                 sector--;
                 break;
@@ -128,7 +128,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
         n = SECTOR_SIZE;
         if(bytes_read + n > size) n = size - bytes_read;
 
-        strncpy((buffer + bytes_read), aux_buffer, n);
+        strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
         bytes_read += n;
 
         if(n != SECTOR_SIZE) break;
@@ -136,7 +136,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
 
     file.current_byte_on_sector = n % SECTOR_SIZE;
     file.current_sector_on_cluster = get_current_logical_sector(&file, sector);
-    strncpy(file.current_sector_data, aux_buffer, n);
+    strncpy(file.current_sector_data, (const char *)aux_buffer, n);
     file.num_bytes_read = n;
 
     open_files[handle] = file;
