@@ -304,9 +304,8 @@ int load_fat() {
 
     while(fat_n_sectors > 0) {
         if(read_sector(sector, buffer) < 0) return -1;
-
-        // TODO: fix the line above, because it is not right
-        *(fat + (SECTOR_SIZE * i) / 4) = *(buffer);
+        
+        memcpy((fat + (SECTOR_SIZE * i)), buffer, SECTOR_SIZE);
 
         i++;
         sector++;
