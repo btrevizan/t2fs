@@ -111,20 +111,14 @@ int read2 (FILE2 handle, char *buffer, int size) {
     while(bytes_read < size) {
         if(read_sector(sector, aux_buffer) < 0) break;
 
-        sector++;
-        if(sector % superblock.SectorsPerCluster == 0) {
-
-            // EOF
-            if(next_cluster(&file) < 0) {
-                n = file.dir_entry.record.bytesFileSize - ((file.dir_entry.record.bytesFileSize / SECTOR_SIZE) * SECTOR_SIZE);
-                strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
-                bytes_read += n;
-                sector--;
-                break;
-            }
-
-            sector = get_current_physical_sector(&file);
+        if(next_sector(&file) < 0) { // EOF
+            n = get_last_byte(file.dir_entry.record.bytesFileSize)
+            strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
+            bytes_read += n;
+            break;
         }
+
+        sector = get_current_physical_sector(&file);
 
         n = SECTOR_SIZE;
         if(bytes_read + n > size) n = size - bytes_read;
@@ -136,13 +130,11 @@ int read2 (FILE2 handle, char *buffer, int size) {
     }
 
     file.current_byte_on_sector = n % SECTOR_SIZE;
-    file.current_sector_on_cluster = get_current_logical_sector(&file, sector);
     strncpy(file.current_sector_data, (const char *)aux_buffer, n);
     file.num_bytes_read = n;
 
     open_files[handle] = file;
     return bytes_read;
-
 }
 
 
@@ -159,6 +151,7 @@ int write2 (FILE2 handle, char *buffer, int size) {
 int truncate2 (FILE2 handle) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
+
 
 	return -1;
 }
@@ -416,6 +409,17 @@ DWORD get_current_logical_sector(const struct fcb *file, DWORD sector) {
     return sector - (file->current_physical_cluster - 1) * superblock.SectorsPerCluster;
 }
 
+int next_sector(struct fcb *file) {
+    DWORD sector = file->current_sector_on_cluster;
+
+    sector++;
+    if(sector % superblock.SectorsPerCluster == 0)
+        if(next_cluster(&file) < 0) return -1; // EOF
+
+    file->current_sector_on_cluster = sector;
+    return 0;
+}
+
 int next_cluster(struct fcb *file) {
     if(file->current_physical_cluster == 0) return -1;   // reserved
     if(file->current_physical_cluster == 1) return -1;   // reserved
@@ -444,5 +448,21 @@ int set_current_sector_on_cluster(DWORD offset, struct fcb *file) {
     DWORD leftover = offset - (offset / CLUSTER_SIZE) * CLUSTER_SIZE;
     file->current_sector_on_cluster = (leftover / SECTOR_SIZE + 1) - 1;
     file->current_byte_on_sector = leftover;
+    return 0;
+}
+
+DWORD get_last_byte(DWORD file_size) {
+    DWORD last_byte = (file_size - (file_size / SECTOR_SIZE) * SECTOR_SIZE) - 1;
+    if(last_byte == -1) last_byte = SECTOR_SIZE - 1;
+    return last_byte;
+}
+
+int free_cluster(DWORD cluster) {
+    int n_fat_entries = superblock.NofSectors / superblock.SectorsPerCluster;
+
+    if(cluster < 0) return -1;
+    if(cluster >= n_fat_entries) return -1;
+
+    fat[cluster] = FREE_CLUSTER;
     return 0;
 }
