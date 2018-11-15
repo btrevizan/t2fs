@@ -14,11 +14,12 @@ static unsigned int *fat;
 static unsigned int CLUSTER_SIZE;
 
 int identify2 (char *name, int size) {
-	if(first_run == 1) t2fs_init();
-	return -1;
+	if(first_run == 1)
+	    if(t2fs_init() < 0) return -1;
+
+	strncpy (name, "Bernardo Trevizan - 00285638\nEduarda Trindade - 00274709\nGabriel Haggstrom - 00228552", size);
+	return 0;
 }
-
-
 
 FILE2 create2 (char *filename) {
     return -1;
@@ -36,13 +37,15 @@ FILE2 open2 (char *filename) {
 	return -1;
 }
 
-
-
 int close2 (FILE2 handle) {
-	return -1;
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	open_files[handle].is_valid = 0;
+	return 0;
 }
-
-
 
 int read2 (FILE2 handle, char *buffer, int size) {
 	// Get file's fcb using its handle
@@ -64,7 +67,17 @@ int truncate2 (FILE2 handle) {
 
 
 int seek2 (FILE2 handle, DWORD offset) {
-	return -1;
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	struct fcb file = open_files[handle];
+	if (set_current_pointer(offset, &file) < 0) return -1;
+
+	open_files[handle] = file;
+	
+	return 0;
 }
 
 
@@ -106,29 +119,91 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry) {
 
 
 int closedir2 (DIR2 handle) {
-	return -1;
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
+	if (is_handle_valid(handle) < 0) return -1;
+
+	open_dirs[handle].is_valid = 0;
+	return 0;
 }
 
 
-
 int ln2(char *linkname, char *filename) {
-	return -1;
+	if(first_run == 1)
+	    if(t2fs_init() < 0) return -1;
+	
+	if (strlen(filename) > CLUSTER_SIZE) return -1;
+
+	struct fcb file;
+	file.dir_entry.record.TypeVal = TYPEVAL_LINK;
+
+	if (create(linkname, &file) < 0) return -1;
+	if (write(&file, filename, (int)strlen(filename)) < 0) return -1;
+
+	return 0;
 }
 
 // -------------------------------------------------------------------------------------------------
 // HELPERS
 // -------------------------------------------------------------------------------------------------
-//int t2fs_init();
 //int update_on_disc(struct directory_entry* entry);
 //int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
 //int is_empty(const struct directory_entry *file);
-//int create(char *filename);
+//int create(char *filename, fcb *file);
+//int write(struct fcb *file, char *content, int size);
+
+int t2fs_init() {
+    if(load_superblock() < 0) return -1;
+    if(load_fat() < 0) return -1;
+
+    // Set current directory
+
+
+    // Define CLUSTER_SIZE
+    CLUSTER_SIZE = superblock.SectorsPerCluster * SECTOR_SIZE;
+
+    first_run = 0;
+    return 0;
+}
+
+int load_superblock() {
+    unsigned char buffer[SECTOR_SIZE];
+    if(read_sector(0, buffer) < 0) return -1;
+
+    superblock = *((struct t2fs_superbloco*) buffer);
+    return 0;
+}
+
+int load_fat() {
+    unsigned int fat_size = (superblock.NofSectors / superblock.SectorsPerCluster) * 4;
+    unsigned int fat_n_sectors = fat_size / SECTOR_SIZE;
+    unsigned int sector = superblock.pFATSectorStart;
+    unsigned char buffer[SECTOR_SIZE];
+    unsigned int i = 0;
+
+    fat = malloc(fat_size);
+    if(!fat) return -1;
+
+    while(fat_n_sectors > 0) {
+        if(read_sector(sector, buffer) < 0) return -1;
+
+        *(fat + (SECTOR_SIZE * i) / 4) = *(buffer);
+
+        i++;
+        sector++;
+        fat_n_sectors--;
+    }
+
+    return 0;
+}
 
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
     if(handle >= N_OPEN_FILES) return -1;
+    if(open_files[handle].is_valid < 0) return -1;
     return 0;
 }
 
@@ -178,13 +253,11 @@ int exists(char *filepath) {
     return resolve_path(filepath, &entry);
 }
 
-FILE2 insert(struct fcb file) {
-   for(int i = 0; i < N_OPEN_FILES; i++) {
-       if(open_files[i].is_valid == 0) {
-           open_files[i] = file;
+int get_free_handle() {
+    for(int i = 0; i < N_OPEN_FILES; i++) {
+       if(open_files[i].is_valid == 0)
            return i;
-       }
-   }
+    }
 
    return -1;
 }
@@ -241,15 +314,15 @@ int next_cluster(struct fcb *file) {
 int set_current_physical_cluster(DWORD offset, struct fcb *file) {
     file->current_physical_cluster = file->dir_entry.record.firstCluster;
 
-    for(int i = 0; i < floor(offset / CLUSTER_SIZE); i++)
+    for(int i = 0; i < (offset / CLUSTER_SIZE); i++)
         if(next_cluster(file) < 0) return -1;
 
     return 0;
 }
 
 int set_current_sector_on_cluster(DWORD offset, struct fcb *file) {
-    int leftover = offset - floor((float)offset / CLUSTER_SIZE) * CLUSTER_SIZE;
-    file->current_sector_on_cluster = floor(leftover / SECTOR_SIZE + 1) - 1;
+    DWORD leftover = offset - (offset / CLUSTER_SIZE) * CLUSTER_SIZE;
+    file->current_sector_on_cluster = (leftover / SECTOR_SIZE + 1) - 1;
     file->current_byte_on_sector = leftover;
     return 0;
 }
