@@ -26,7 +26,23 @@ FILE2 create2 (char *filename) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-    return -1;
+    int i = get_free_handle();
+    if(i < 0) return -1; // N_FILES_OPEN opened
+
+    if(exists(filename) == 0) {
+        i = open2(filename);
+        if(is_handle_valid(i) < 0) return -1;
+
+        truncate2(i);
+        return i;
+    }
+
+    struct fcb file;
+    file.dir_entry.record.TypeVal = TYPEVAL_REGULAR;
+    if(create(filename, &file) < 0) return -1;
+
+    open_files[i] = file;
+    return i;
 }
 
 
@@ -44,7 +60,14 @@ FILE2 open2 (char *filename) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	return -1;
+    int i = get_free_handle();
+    if(i < 0) return -1; // N_FILES_OPEN opened
+
+    struct fcb file;
+    if(get_file(filename, &file) < 0) return -1;
+
+    open_files[i] = file;
+    return i;
 }
 
 int close2 (FILE2 handle) {
