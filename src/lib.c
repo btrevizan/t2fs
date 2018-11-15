@@ -51,7 +51,12 @@ int delete2 (char *filename) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	return -1;
+    struct directory_entry dir_entry;
+
+    if(resolve_path(filename, &dir_entry) < 0) return -1;
+    if(is_file(&dir_entry) < 0 || is_link(&dir_entry) < 0) return -1;
+
+    return delete_file(&dir_entry);
 }
 
 
