@@ -10,6 +10,7 @@ static char first_run = 1;
 static struct t2fs_superbloco superblock;
 static struct fcb open_files[N_OPEN_FILES];
 static struct fcb open_dirs[1];
+static char *current_dir;
 static unsigned int *fat;
 static unsigned int CLUSTER_SIZE;
 
@@ -48,8 +49,62 @@ int close2 (FILE2 handle) {
 }
 
 int read2 (FILE2 handle, char *buffer, int size) {
-	// Get file's fcb using its handle
-	
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+        
+    if(is_handle_valid(handle) < 0) return -1;
+
+    struct fcb file = open_files[handle];
+    if(size > file.dir_entry.record.bytesFileSize) return -1;
+
+    unsigned int sector = get_current_physical_sector(&file);
+    char aux_buffer[SECTOR_SIZE];
+
+    // Read current sector and adjust strncpy to start on current pointer
+    if(read_sector(sector, aux_buffer) < 0) retorna -1;
+
+    unsigned int n = SECTOR_SIZE - file.current_byte_on_sector;
+    if(n > size) n = size;
+
+    unsigned int bytes_read = n;
+    strncpy(buffer, (aux_buffer + file.current_byte_on_sector), n);
+
+    // Read the rest, sector by sector
+    while(bytes_read < size) {
+        if(read_sector(sector, aux_buffer) < 0) break;
+
+        sector++;
+        if(sector % superblock.SectorsPerCluster == 0) {
+
+            // EOF
+            if(next_cluster(&file) < 0) {
+                n = file.dir_entry.record.bytesFileSize - ((file.dir_entry.record.bytesFileSize / SECTOR_SIZE) * SECTOR_SIZE);
+                strncpy((buffer + bytes_read), aux_buffer, n);
+                bytes_read += n;
+                sector--;
+                break;
+            }
+
+            sector = get_current_physical_sector(&file);
+        }
+
+        n = SECTOR_SIZE;
+        if(bytes_read + n > size) n = size - bytes_read;
+
+        strncpy((buffer + bytes_read), aux_buffer, n);
+        bytes_read += n;
+
+        if(n != SECTOR_SIZE) break;
+    }
+
+    file.current_byte_on_sector = n % SECTOR_SIZE;
+    file.current_sector_on_cluster = get_current_logical_sector(&file, sector);
+    strncpy(file.current_sector_data, aux_buffer, n);
+    file.num_bytes_read = n;
+
+    open_files[handle] = file;
+    return bytes_read;
+
 }
 
 
@@ -160,7 +215,9 @@ int t2fs_init() {
     if(load_fat() < 0) return -1;
 
     // Set current directory
-
+    current_dir = (char *) malloc(sizeof(char) * 2);
+    if(!current_dir) return -1;
+    strcpy(current_dir, "/");
 
     // Define CLUSTER_SIZE
     CLUSTER_SIZE = superblock.SectorsPerCluster * SECTOR_SIZE;
@@ -190,6 +247,7 @@ int load_fat() {
     while(fat_n_sectors > 0) {
         if(read_sector(sector, buffer) < 0) return -1;
 
+        // TODO: fix the line above, because it is not right
         *(fat + (SECTOR_SIZE * i) / 4) = *(buffer);
 
         i++;
