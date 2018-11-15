@@ -205,7 +205,10 @@ int getcwd2 (char *pathname, int size) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	return -1;
+    if(strlen(current_dir) > size) return -1;
+    strncpy(pathname, current_dir, size);
+
+    return 0;
 }
 
 
