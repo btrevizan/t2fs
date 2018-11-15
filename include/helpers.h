@@ -28,7 +28,7 @@ struct fcb {
 int t2fs_init();
 int load_superblock();
 int load_fat();
-int update_on_disc(struct directory_entry* entry);
+int update_on_disk(struct directory_entry* entry);
 int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
 int resolve_path(char* path, struct directory_entry* entry);
 int delete_file(struct directory_entry *entry);
@@ -49,6 +49,7 @@ DWORD get_current_physical_sector(const struct fcb *file);
 DWORD get_current_logical_sector(const struct fcb *file, DWORD sector);
 int next_sector(struct fcb *file);
 int next_cluster(struct fcb *file);
+int prev_cluster(struct fcb *file);
 int set_current_physical_cluster(DWORD offset, struct fcb *file);
 int set_current_sector_on_cluster(DWORD offset, struct fcb *file);
 int write(struct fcb *file, char *content, int size);

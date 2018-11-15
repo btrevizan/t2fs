@@ -22,6 +22,7 @@ int identify2 (char *name, int size) {
 	return 0;
 }
 
+
 FILE2 create2 (char *filename) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
@@ -75,6 +76,7 @@ FILE2 open2 (char *filename) {
     return i;
 }
 
+
 int close2 (FILE2 handle) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
@@ -85,6 +87,7 @@ int close2 (FILE2 handle) {
 	open_files[handle].is_valid = 0;
 	return 0;
 }
+
 
 int read2 (FILE2 handle, char *buffer, int size) {
     if(first_run == 1)
@@ -152,8 +155,61 @@ int truncate2 (FILE2 handle) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
+    if(is_handle_valid(handle) < 0) return -1;
+    struct fcb file = open_files[handle];
 
-	return -1;
+    unsigned int removed_sectors = 1;
+    if(file.current_byte_on_sector > 0)
+        removed_sectors = 0;
+
+    DWORD curr_cluster = file.current_physical_cluster;
+    DWORD curr_sector = file.current_sector_on_cluster;
+    DWORD curr_byte = file.current_byte_on_sector;
+    DWORD cluster = curr_cluster;
+
+    while(next_sector(&file) == 0) {
+        removed_sectors++;
+
+        if(cluster != file.current_physical_cluster) {
+            free_cluster(cluster);
+            cluster = file.current_physical_cluster;
+        }
+    }
+
+    free_cluster(cluster);
+
+    DWORD last_byte = get_last_byte(file.dir_entry.record.bytesFileSize);
+    file.dir_entry.record.bytesFileSize -= ((removed_sectors - 1) * SECTOR_SIZE + last_byte + 1 - (256 - curr_byte));
+    file.dir_entry.record.clustersFileSize -= removed_sectors / superblock.SectorsPerCluster;
+
+    file.current_physical_cluster = curr_cluster;
+    file.current_sector_on_cluster = curr_sector - 1;
+    file.current_byte_on_sector = SECTOR_SIZE - 1;
+
+    if(file.current_byte_on_sector == 0) {
+        if(file.current_sector_on_cluster == 0) {
+            if(file.current_physical_cluster == file.dir_entry.record.firstCluster) {
+                // Pointer is in the beginning of the file
+                file.dir_entry.record.bytesFileSize = 0;
+                file.dir_entry.record.clustersFileSize = 1;
+                file.current_physical_cluster = file.dir_entry.record.firstCluster;
+                file.current_sector_on_cluster = 0;
+                file.current_byte_on_sector = 0;
+            } else {
+                // Pointer is in the beginning of a cluster that is not the first cluster
+                prev_cluster(&file);
+                file.current_sector_on_cluster = superblock.SectorsPerCluster - 1;
+            }
+        }
+    } else {
+        // Pointer is in the middle of a sector
+        file.current_sector_on_cluster = curr_sector;
+        file.current_byte_on_sector = curr_byte - 1;
+    }
+
+    update_on_disk(&file.dir_entry);
+    open_files[handle] = file;
+    return 0;
 }
 
 
@@ -260,7 +316,7 @@ int ln2(char *linkname, char *filename) {
 // -------------------------------------------------------------------------------------------------
 // HELPERS
 // -------------------------------------------------------------------------------------------------
-//int update_on_disc(struct directory_entry* entry);
+//int update_on_disk(struct directory_entry* entry);
 //int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
@@ -304,7 +360,7 @@ int load_fat() {
 
     while(fat_n_sectors > 0) {
         if(read_sector(sector, buffer) < 0) return -1;
-        
+
         memcpy((fat + (SECTOR_SIZE * i)), buffer, SECTOR_SIZE);
 
         i++;
@@ -434,6 +490,19 @@ int next_cluster(struct fcb *file) {
     file->current_physical_cluster = next;
     file->current_sector_on_cluster = 0;
     file->current_byte_on_sector = 0;
+    return 0;
+}
+
+int prev_cluster(struct fcb *file) {
+    DWORD last_cluster_visited;
+    DWORD curr_cluster = file->current_physical_cluster;
+    file->current_physical_cluster = file->dir_entry.record.firstCluster;
+
+    while(file->current_physical_cluster != curr_cluster) {
+        last_cluster_visited = file->current_physical_cluster;
+        next_cluster(file);
+    }
+
     return 0;
 }
 
