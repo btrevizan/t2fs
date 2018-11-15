@@ -112,7 +112,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
         if(read_sector(sector, aux_buffer) < 0) break;
 
         if(next_sector(&file) < 0) { // EOF
-            n = get_last_byte(file.dir_entry.record.bytesFileSize)
+            n = get_last_byte(file.dir_entry.record.bytesFileSize);
             strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
             bytes_read += n;
             break;
@@ -417,7 +417,7 @@ int next_sector(struct fcb *file) {
 
     sector++;
     if(sector % superblock.SectorsPerCluster == 0)
-        if(next_cluster(&file) < 0) return -1; // EOF
+        if(next_cluster(file) < 0) return -1; // EOF
 
     file->current_sector_on_cluster = sector;
     return 0;
