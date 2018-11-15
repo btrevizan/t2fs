@@ -21,7 +21,7 @@ int identify2 (char *name, int size) {
 
 
 FILE2 create2 (char *filename) {
-	return -1;
+    return -1;
 }
 
 
@@ -45,7 +45,8 @@ int close2 (FILE2 handle) {
 
 
 int read2 (FILE2 handle, char *buffer, int size) {
-	return -1;
+	// Get file's fcb using its handle
+	
 }
 
 
@@ -115,7 +116,7 @@ int ln2(char *linkname, char *filename) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// FUNÇÕES AUXILIARES
+// HELPERS
 // -------------------------------------------------------------------------------------------------
 //int t2fs_init();
 //int update_on_disc(struct directory_entry* entry);
