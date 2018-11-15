@@ -98,7 +98,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
     char aux_buffer[SECTOR_SIZE];
 
     // Read current sector and adjust strncpy to start on current pointer
-    if(read_sector(sector, aux_buffer) < 0) retorna -1;
+    if(read_sector(sector, aux_buffer) < 0) return -1;
 
     unsigned int n = SECTOR_SIZE - file.current_byte_on_sector;
     if(n > size) n = size;
