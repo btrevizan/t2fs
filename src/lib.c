@@ -23,18 +23,27 @@ int identify2 (char *name, int size) {
 }
 
 FILE2 create2 (char *filename) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
     return -1;
 }
 
 
 
 int delete2 (char *filename) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
 
 
 FILE2 open2 (char *filename) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
@@ -51,7 +60,7 @@ int close2 (FILE2 handle) {
 int read2 (FILE2 handle, char *buffer, int size) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
-        
+
     if(is_handle_valid(handle) < 0) return -1;
 
     struct fcb file = open_files[handle];
@@ -110,12 +119,18 @@ int read2 (FILE2 handle, char *buffer, int size) {
 
 
 int write2 (FILE2 handle, char *buffer, int size) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
 
 
 int truncate2 (FILE2 handle) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
@@ -138,36 +153,54 @@ int seek2 (FILE2 handle, DWORD offset) {
 
 
 int mkdir2 (char *pathname) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
 
 
 int rmdir2 (char *pathname) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
 
 
 int chdir2 (char *pathname) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
 
 
 int getcwd2 (char *pathname, int size) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
 
 
 DIR2 opendir2 (char *pathname) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
 
 
 int readdir2 (DIR2 handle, DIRENT2 *dentry) {
+    if(first_run == 1)
+        if(t2fs_init() < 0) return -1;
+
 	return -1;
 }
 
