@@ -392,16 +392,13 @@ int load_fat() {
     unsigned int fat_size = ((superblock.NofSectors - superblock.DataSectorStart) / superblock.SectorsPerCluster) * 4;
     unsigned int fat_n_sectors = fat_size / SECTOR_SIZE;
     unsigned int sector = superblock.pFATSectorStart;
-    unsigned char buffer[SECTOR_SIZE];
     unsigned int i = 0;
 
     fat = malloc(fat_size);
     if(!fat) return -1;
 
     while(fat_n_sectors > 0) {
-        if(read_sector(sector, buffer) < 0) return -1;
-
-        memcpy((fat + (SECTOR_SIZE * i)), buffer, SECTOR_SIZE);
+        if(read_sector(sector, (unsigned char *)(fat + (SECTOR_SIZE * i))) < 0) return -1;
 
         i++;
         sector++;
