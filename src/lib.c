@@ -30,7 +30,7 @@ FILE2 create2 (char *filename) {
     int i = get_free_handle();
     if(i < 0) return -1; // N_FILES_OPEN opened
 
-    if(exists(filename) == 0) {
+    if(exists(filename) == 1) {
         i = open2(filename);
         if(is_handle_valid(i) < 0) return -1;
 
@@ -219,8 +219,7 @@ int mkdir2 (char *pathname) {
     // Get parent first cluster
     struct directory_entry entry;
     char *parent_pathname = (char *) malloc(strlen(pathname) + strlen("/.."));
-    strncpy(parent_pathname, pathname, strlen(pathname) - 1);
-    strcat(parent_pathname, "/..");
+    get_parent_filepath(pathname, parent_pathname);
 
     if(resolve_path(parent_pathname, &entry) < 0) return -1;
 
@@ -359,9 +358,8 @@ int ln2(char *linkname, char *filename) {
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
 //int is_empty(const struct directory_entry *file);
-//int create_file(char *filename, fcb *file);
 //int write_file(struct fcb *file, char *content, int size);
-//int add_entry(struct t2fs_record *record, struct fcb *dir);
+//int add_entry(struct t2fs_record *record, struct dir_entry *dir);
 //int remove_entry(struct directory_entry *entry);
 
 int t2fs_init() {
@@ -389,7 +387,7 @@ int load_superblock() {
 }
 
 int load_fat() {
-    unsigned int fat_size = ((superblock.NofSectors - superblock.DataSectorStart) / superblock.SectorsPerCluster) * 4;
+    unsigned int fat_size = fat_bytes_size();
     unsigned int fat_n_sectors = fat_size / SECTOR_SIZE;
     unsigned int sector = superblock.pFATSectorStart;
     unsigned int i = 0;
@@ -406,6 +404,44 @@ int load_fat() {
     }
 
     return 0;
+}
+
+int fat_bytes_size() {
+    return ((superblock.NofSectors - superblock.DataSectorStart) / superblock.SectorsPerCluster) * 4;
+}
+
+int create_file(char *filename, struct fcb *file) {
+    struct directory_entry entry;
+    if(resolve_path(filename, &entry) < 0) return -1;
+    if(exists(filename) == 1) return -1;
+
+    unsigned int cluster = alloc_cluster();
+    if(cluster < 0) return -1;
+
+    char *name = (char *) malloc(MAX_FILE_NAME_SIZE);
+    get_file_name(filename, name);
+
+    strncpy(file->dir_entry.record.name, name, 51);
+    file->dir_entry.record.bytesFileSize = 0;
+    file->dir_entry.record.clustersFileSize = 1;
+    file->dir_entry.record.firstCluster = cluster;
+
+    struct fcb parent;
+    char *parent_pathname = (char *) malloc(strlen(filename) + strlen("/.."));
+    get_parent_filepath(filename, parent_pathname);
+
+    if(get_file(parent_pathname, &parent) < 0) return -1;
+    if(add_entry(&file->dir_entry.record, &parent) < 0) return -1;
+
+    file->is_valid = 1;
+    file->current_physical_cluster = cluster;
+    file->current_sector_on_cluster = 0;
+    file->current_byte_on_sector = 0;
+
+    file->dir_entry.sector = get_current_physical_sector(file);
+    file->dir_entry.byte_on_sector = 0;
+
+    return cluster;
 }
 
 int read_file(struct fcb *file, char *buffer, int size) {
@@ -455,7 +491,6 @@ int read_file(struct fcb *file, char *buffer, int size) {
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
     if(handle >= N_OPEN_FILES) return -1;
-    if(open_files[handle].is_valid == 1) return -1;
     return 0;
 }
 
@@ -511,7 +546,8 @@ int is_linkd(const struct directory_entry *file) {
 
 int exists(char *filepath) {
     struct directory_entry entry;
-    return resolve_path(filepath, &entry);
+    if(resolve_path(filepath, &entry) == 0) return 1;
+    return 0;
 }
 
 int get_file(char *filename, struct fcb *file) {
@@ -526,6 +562,23 @@ int get_file(char *filename, struct fcb *file) {
     file->num_bytes_read = 0;
     file->is_valid = 1;
 
+    return 0;
+}
+
+int get_file_name(char *filepath, char *filename) {
+    char *dir = strtok(filepath, "/");
+
+    while(dir) {
+        strcpy(filename, dir);
+        dir = strtok(NULL, "/");
+    }
+
+    return 0;
+}
+
+int get_parent_filepath(char *filepath, char *parent_pathname) {
+    strncpy(parent_pathname, filepath, strlen(filepath) - 1);
+    strcat(parent_pathname, "/..");
     return 0;
 }
 
@@ -576,6 +629,23 @@ int free_cluster(DWORD cluster) {
 
     fat[cluster] = FREE_CLUSTER;
     return 0;
+}
+
+unsigned int alloc_cluster() {
+    unsigned int cluster = 0;
+    int n_clusters = fat_bytes_size() / 4;
+
+    while(fat[cluster] != FREE_CLUSTER && cluster < n_clusters)
+        cluster++;
+
+    if(cluster == n_clusters) return -1;
+
+    fat[cluster] = END_OF_FILE;
+
+    unsigned int sector = superblock.pFATSectorStart + (cluster / (SECTOR_SIZE / 4));
+    if(write_sector(sector, (unsigned char *)(fat + sector * SECTOR_SIZE)) < 0) return -1;
+
+    return cluster;
 }
 
 int set_current_pointer(DWORD offset, struct fcb *file) {

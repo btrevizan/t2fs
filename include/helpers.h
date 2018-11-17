@@ -29,6 +29,8 @@ int t2fs_init();
 int load_superblock();
 int load_fat();
 
+int fat_bytes_size();
+
 int update_on_disk(struct directory_entry* entry);
 
 int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
@@ -39,6 +41,8 @@ int read_file(struct fcb *file, char *buffer, int size);
 int write_file(struct fcb *file, char *content, int size);
 int delete_file(struct directory_entry *entry);
 int get_file(char *filename, struct fcb *file);
+int get_file_name(char *filepath, char *filename);
+int get_parent_filepath(char *filepath, char *parent_filepath);
 
 int add_entry(struct t2fs_record *record, struct fcb *dir);
 int remove_entry(struct directory_entry *entry);
@@ -59,6 +63,7 @@ int next_sector(struct fcb *file);
 int next_cluster(struct fcb *file);
 int prev_cluster(struct fcb *file);
 int free_cluster(DWORD cluster);
+unsigned int alloc_cluster();
 
 int set_current_pointer(DWORD offset, struct fcb *file);
 DWORD get_current_physical_sector(const struct fcb *file);
