@@ -445,8 +445,6 @@ int create_file(char *filename, struct fcb *file) {
 }
 
 int read_file(struct fcb *file, char *buffer, int size) {
-    if(size > file->dir_entry.record.bytesFileSize) return -1;
-
     unsigned int sector = get_current_physical_sector(file);
     unsigned char aux_buffer[SECTOR_SIZE];
 
