@@ -234,7 +234,13 @@ int mkdir2 (char *pathname) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	return -1;
+    if(open_dirs[0].is_valid == 0) return 0;
+
+    struct fcb file;
+    file.dir_entry.record.TypeVal = TYPEVAL_DIRETORIO;
+
+    if(create(pathname, &file) < 0) return -1;
+    return 0;
 }
 
 
@@ -243,7 +249,14 @@ int rmdir2 (char *pathname) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	return -1;
+    struct directory_entry entry;
+
+    if(resolve_path(pathname, &entry) < 0) return -1;
+    if(is_dir(&entry) < 0) return -1;
+    if(is_empty(&entry) < 0) return -1;
+    if(is_linkf(&entry) > 0) return -1;
+
+    return delete_file(&entry);
 }
 
 
