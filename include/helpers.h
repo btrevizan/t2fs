@@ -41,6 +41,7 @@ int read_file(struct fcb *file, char *buffer, int size);
 int write_file(struct fcb *file, char *buffer, int size);
 int delete_file(struct directory_entry *entry);
 int get_file(char *filename, struct fcb *file);
+int create_fcb(struct directory_entry *entry, struct fcb *file);
 int get_file_name(char *filepath, char *filename);
 int get_parent_filepath(char *filepath, char *parent_filepath);
 

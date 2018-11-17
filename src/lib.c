@@ -502,16 +502,18 @@ int read_file(struct fcb *file, char *buffer, int size) {
 
 int get_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
-
     if(resolve_path(filename, &entry) < 0) return -1;
+    return create_fcb(&entry, file);
+}
 
+int create_fcb(struct directory_entry *entry, struct fcb *file) {
     file->dir_entry = entry;
     file->current_physical_cluster = entry.record.firstCluster;
     file->current_sector_on_cluster = 0;
     file->current_byte_on_sector = 0;
     file->num_bytes_read = 0;
+    strcpy(file->current_sector_data[SECTOR_SIZE], "");
     file->is_valid = 1;
-
     return 0;
 }
 
