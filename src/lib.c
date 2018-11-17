@@ -292,7 +292,17 @@ DIR2 opendir2 (char *pathname) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	return -1;
+    DIR2 handle = 0;
+
+    if(open_dirs[handle].is_valid == 1) return -1;
+
+    struct fcb file;
+    if(get_file(pathname, &file) < 0) return -1;
+    if(is_dir(&file.dir_entry) < 0) return -1;
+
+    open_dirs[0] = file;
+    return 0;
+
 }
 
 
