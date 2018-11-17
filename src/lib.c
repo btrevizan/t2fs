@@ -467,8 +467,6 @@ int read_file(struct fcb *file, char *buffer, int size) {
 
     // Read the rest, sector by sector
     while(bytes_read < size) {
-        if(read_sector(sector, aux_buffer) < 0) break;
-
         if(next_sector(file) < 0) { // EOF
             n = get_last_byte(file->dir_entry.record.bytesFileSize);
             strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
@@ -477,6 +475,7 @@ int read_file(struct fcb *file, char *buffer, int size) {
         }
 
         sector = get_current_physical_sector(file);
+        if(read_sector(sector, aux_buffer) < 0) break;
 
         n = SECTOR_SIZE;
         if(bytes_read + n > size) n = size - bytes_read;
@@ -495,9 +494,44 @@ int read_file(struct fcb *file, char *buffer, int size) {
 }
 
 
-//int write_file(struct fcb *file, char *buffer, int size) {
-//    return 0;
-//}
+int write_file(struct fcb *file, char *buffer, int size) {
+    unsigned int sector = get_current_physical_sector(file);
+    unsigned char aux_buffer[SECTOR_SIZE];
+
+    if(read_sector(sector, aux_buffer) < 0) return -1;
+
+    unsigned int n = SECTOR_SIZE - file->current_byte_on_sector;
+    if(n > size) n = size;
+
+    unsigned int bytes_written = n;
+
+    strncpy((char *) (aux_buffer + file->current_byte_on_sector), (const char *)buffer, n);
+    if(write_sector(sector, aux_buffer) < 0) return -1;
+
+    // Write the rest, sector by sector
+    while(bytes_written < size) {
+        if(next_sector(file) < 0) { // EOF
+            if(add_cluster(file) < 0) break;
+        } else {
+            sector = get_current_physical_sector(file);
+
+            n = SECTOR_SIZE;
+            if(bytes_written + n > size) {
+                n = size - bytes_written;
+                if(read_sector(sector, aux_buffer) < 0) break;
+            }
+
+            strncpy((char *)aux_buffer, (const char *)(buffer + bytes_written), n);
+            if(write_sector(sector, aux_buffer) < 0) break;
+
+            bytes_written += n;
+            if(n != SECTOR_SIZE) break;
+        }
+    }
+
+    file->current_byte_on_sector = n % SECTOR_SIZE;
+    return bytes_written;
+}
 
 
 int get_file(char *filename, struct fcb *file) {
@@ -506,16 +540,18 @@ int get_file(char *filename, struct fcb *file) {
     return create_fcb(&entry, file);
 }
 
+
 int create_fcb(struct directory_entry *entry, struct fcb *file) {
-    file->dir_entry = entry;
-    file->current_physical_cluster = entry.record.firstCluster;
+    file->dir_entry = *entry;
+    file->current_physical_cluster = entry->record.firstCluster;
     file->current_sector_on_cluster = 0;
     file->current_byte_on_sector = 0;
     file->num_bytes_read = 0;
-    strcpy(file->current_sector_data[SECTOR_SIZE], "");
+    strcpy(file->current_sector_data, (const char *)"");
     file->is_valid = 1;
     return 0;
 }
+
 
 int get_file_name(char *filepath, char *filename) {
     char *dir = strtok(filepath, "/");
@@ -742,6 +778,20 @@ unsigned int alloc_cluster() {
     return cluster;
 }
 
+unsigned int add_cluster(struct fcb *file) {
+    unsigned int cluster = file->current_physical_cluster;
+    while(fat[cluster] != END_OF_FILE) cluster = fat[cluster];
+
+    unsigned int new_cluster = alloc_cluster();
+    if(new_cluster < 0) return -1;
+
+    fat[cluster] = new_cluster;
+
+    unsigned int sector = superblock.pFATSectorStart + (cluster / (SECTOR_SIZE / 4));
+    if(write_sector(sector, (unsigned char *)(fat + sector * SECTOR_SIZE)) < 0) return -1;
+
+    return new_cluster;
+}
 
 int set_current_pointer(DWORD offset, struct fcb *file) {
     if(offset > file->dir_entry.record.bytesFileSize) return -1;

@@ -65,6 +65,7 @@ int next_cluster(struct fcb *file);
 int prev_cluster(struct fcb *file);
 int free_cluster(DWORD cluster);
 unsigned int alloc_cluster();
+unsigned int add_cluster(struct fcb *file);
 
 int set_current_pointer(DWORD offset, struct fcb *file);
 DWORD get_current_physical_sector(const struct fcb *file);
