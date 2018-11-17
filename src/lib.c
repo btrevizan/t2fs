@@ -239,10 +239,36 @@ int mkdir2 (char *pathname) {
     struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_DIRETORIO;
 
-    if(create(pathname, &file) < 0) return -1;
+    unsigned int cluster = create(pathname, &file);
+    if(cluster < 0) return -1;
 
-    // TODO: Insert current and parent dir entries
+    // Create the current and parent entries
+    struct t2fs_record current;
+    struct t2fs_record parent;
 
+    current.TypeVal = TYPEVAL_DIRETORIO;
+    strcpy(current.name, ".");
+    current.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+    current.clustersFileSize = 1;
+    current.firstCluster = cluster;
+
+    add_entry(&current, &file);
+
+    // Get parent first cluster
+    struct directory_entry entry;
+    char *parent_pathname = (char *) malloc(strlen(pathname) + strlen("/.."));
+    strncpy(parent_pathname, pathname, strlen(pathname) - 1);
+    strcat(parent_pathname, "/..");
+
+    if(resolve_path(parent_pathname, &entry) < 0) return -1;
+
+    parent.TypeVal = TYPEVAL_DIRETORIO;
+    strcpy(parent.name, "..");
+    parent.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+    parent.clustersFileSize = 1;
+    parent.firstCluster = entry.record.firstCluster;
+
+    add_entry(&parent, &file);
     return 0;
 }
 
@@ -357,6 +383,8 @@ int ln2(char *linkname, char *filename) {
 //int is_empty(const struct directory_entry *file);
 //int create(char *filename, fcb *file);
 //int write(struct fcb *file, char *content, int size);
+//int add_entry(struct t2fs_record *record, struct fcb *dir);
+//int remove_entry(struct directory_entry *entry);
 
 int t2fs_init() {
     if(load_superblock() < 0) return -1;

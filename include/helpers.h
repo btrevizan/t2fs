@@ -55,3 +55,5 @@ int set_current_sector_on_cluster(DWORD offset, struct fcb *file);
 int write(struct fcb *file, char *content, int size);
 DWORD get_last_byte(DWORD fileSize);
 int free_cluster(DWORD cluster);
+int add_entry(struct t2fs_record *record, struct fcb *dir);
+int remove_entry(struct directory_entry *entry);
