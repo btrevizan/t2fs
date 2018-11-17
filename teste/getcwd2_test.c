@@ -5,10 +5,13 @@
 #include <string.h>
 
 int main() {
-  start_test("close2");
-  
-  FILE2 handle = create2("file");
-  int ret_code = close2(handle);
+  start_test("getcwd2");
+
+  char cwd[2];
+
+  int ret_code = getcwd2(cwd, 2);
+  assert("Retorna o caminho correto", strcmp(cwd, "/") == 0);
+
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 
   end_test();
