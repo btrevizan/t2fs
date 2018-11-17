@@ -230,7 +230,7 @@ int mkdir2 (char *pathname) {
     current.clustersFileSize = 1;
     current.firstCluster = cluster;
 
-    add_entry(&current, &file);
+    add_entry(&current, &file.dir_entry);
 
     // Get parent first cluster
     struct directory_entry entry;
@@ -245,7 +245,7 @@ int mkdir2 (char *pathname) {
     parent.clustersFileSize = 1;
     parent.firstCluster = entry.record.firstCluster;
 
-    add_entry(&parent, &file);
+    add_entry(&parent, &file.dir_entry);
     return 0;
 }
 
@@ -364,9 +364,6 @@ int ln2(char *linkname, char *filename) {
 //int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
-//int write_file(struct fcb *file, char *content, int size);
-//int add_entry(struct t2fs_record *record, struct dir_entry *dir);
-//int remove_entry(struct directory_entry *entry);
 
 int t2fs_init() {
     if(load_superblock() < 0) return -1;
@@ -387,10 +384,12 @@ int t2fs_init() {
     return 0;
 }
 
+
 int load_superblock() {
     if(read_sector(0, (unsigned char *) (&superblock)) < 0) return -1;
     return 0;
 }
+
 
 int load_fat() {
     unsigned int fat_size = fat_bytes_size();
@@ -412,9 +411,11 @@ int load_fat() {
     return 0;
 }
 
+
 int fat_bytes_size() {
     return ((superblock.NofSectors - superblock.DataSectorStart) / superblock.SectorsPerCluster) * 4;
 }
+
 
 int create_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
@@ -437,7 +438,7 @@ int create_file(char *filename, struct fcb *file) {
     get_parent_filepath(filename, parent_pathname);
 
     if(get_file(parent_pathname, &parent) < 0) return -1;
-    if(add_entry(&file->dir_entry.record, &parent) < 0) return -1;
+    if(add_entry(&file->dir_entry.record, &parent.dir_entry) < 0) return -1;
 
     file->is_valid = 1;
     file->current_physical_cluster = cluster;
@@ -449,6 +450,7 @@ int create_file(char *filename, struct fcb *file) {
 
     return cluster;
 }
+
 
 int read_file(struct fcb *file, char *buffer, int size) {
     unsigned int sector = get_current_physical_sector(file);
@@ -492,6 +494,12 @@ int read_file(struct fcb *file, char *buffer, int size) {
     return bytes_read;
 }
 
+
+//int write_file(struct fcb *file, char *buffer, int size) {
+//    return 0;
+//}
+
+
 int get_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
 
@@ -507,11 +515,72 @@ int get_file(char *filename, struct fcb *file) {
     return 0;
 }
 
+int get_file_name(char *filepath, char *filename) {
+    char *dir = strtok(filepath, "/");
+
+    while(dir) {
+        strcpy(filename, dir);
+        dir = strtok(NULL, "/");
+    }
+
+    return 0;
+}
+
+
+int get_parent_filepath(char *filepath, char *parent_pathname) {
+    strncpy(parent_pathname, filepath, strlen(filepath) - 1);
+    strcat(parent_pathname, "/..");
+    return 0;
+}
+
+
+int add_entry(struct t2fs_record *record, struct directory_entry *dir) {
+    if(!is_dir(dir)) return -1;
+
+    unsigned char buffer[SECTOR_SIZE];
+    unsigned int sector = dir->sector;
+
+    struct t2fs_record aux_record;
+    unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
+
+    for(int i = 0; i < superblock.SectorsPerCluster; i++) {
+        read_sector(sector + i, buffer);
+
+        for(int j = 0; j < SECTOR_SIZE / record_size; j++) {
+            if(!(i == 0 && (j == 0 || j == 1))) {
+                memcpy(&aux_record, (buffer + j * record_size), record_size);
+
+                if(aux_record.TypeVal == TYPEVAL_INVALIDO) {
+                    memcpy((buffer + j * record_size), record, record_size);
+                    if(write_sector(sector + i, buffer) < 0) return -1;
+                    return 0;
+                }
+            }
+        }
+    }
+
+    return -1;
+}
+
+
+int remove_entry(struct directory_entry *entry) {
+    unsigned char buffer[SECTOR_SIZE];
+    read_sector(entry->sector, buffer);
+
+    struct t2fs_record invalid;
+    invalid.TypeVal = TYPEVAL_INVALIDO;
+
+    memcpy((buffer + entry->byte_on_sector), &invalid, sizeof(struct t2fs_record));
+    return 0;
+}
+
+
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
     if(handle >= N_OPEN_FILES) return -1;
     return 0;
 }
+
 
 int get_free_handle() {
     for(int i = 0; i < N_OPEN_FILES; i++) {
@@ -522,22 +591,27 @@ int get_free_handle() {
     return -1;
 }
 
+
 BYTE file_type(const struct directory_entry *file) {
     return file->record.TypeVal;
 }
+
 
 int is_file(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_REGULAR;
 }
 
 
+
 int is_dir(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_DIRETORIO;
 }
 
+
 int is_link(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_LINK;
 }
+
 
 int is_linkf(const struct directory_entry *file) {
     if(is_link(file) < 0) return -1;
@@ -551,6 +625,7 @@ int is_linkf(const struct directory_entry *file) {
     return is_file(&entry);
 }
 
+
 int is_linkd(const struct directory_entry *file) {
     if(is_link(file) < 0) return -1;
 
@@ -562,6 +637,7 @@ int is_linkd(const struct directory_entry *file) {
 
     return is_dir(&entry);
 }
+
 
 int is_empty(const struct directory_entry *file) {
     if(is_dir(file) < 0) return -1;
@@ -586,28 +662,13 @@ int is_empty(const struct directory_entry *file) {
     return 1;
 }
 
+
 int exists(char *filepath) {
     struct directory_entry entry;
     if(resolve_path(filepath, &entry) == 0) return 1;
     return 0;
 }
 
-int get_file_name(char *filepath, char *filename) {
-    char *dir = strtok(filepath, "/");
-
-    while(dir) {
-        strcpy(filename, dir);
-        dir = strtok(NULL, "/");
-    }
-
-    return 0;
-}
-
-int get_parent_filepath(char *filepath, char *parent_pathname) {
-    strncpy(parent_pathname, filepath, strlen(filepath) - 1);
-    strcat(parent_pathname, "/..");
-    return 0;
-}
 
 int next_sector(struct fcb *file) {
     DWORD sector = file->current_sector_on_cluster;
@@ -619,6 +680,7 @@ int next_sector(struct fcb *file) {
     file->current_sector_on_cluster = sector;
     return 0;
 }
+
 
 int next_cluster(struct fcb *file) {
     if(file->current_physical_cluster == 0) return -1;   // reserved
@@ -635,6 +697,7 @@ int next_cluster(struct fcb *file) {
     return 0;
 }
 
+
 int prev_cluster(struct fcb *file) {
     DWORD last_cluster_visited;
     DWORD curr_cluster = file->current_physical_cluster;
@@ -648,6 +711,7 @@ int prev_cluster(struct fcb *file) {
     return 0;
 }
 
+
 int free_cluster(DWORD cluster) {
     int n_fat_entries = superblock.NofSectors / superblock.SectorsPerCluster;
 
@@ -657,6 +721,7 @@ int free_cluster(DWORD cluster) {
     fat[cluster] = FREE_CLUSTER;
     return 0;
 }
+
 
 unsigned int alloc_cluster() {
     unsigned int cluster = 0;
@@ -675,6 +740,7 @@ unsigned int alloc_cluster() {
     return cluster;
 }
 
+
 int set_current_pointer(DWORD offset, struct fcb *file) {
     if(offset > file->dir_entry.record.bytesFileSize) return -1;
 
@@ -686,13 +752,16 @@ int set_current_pointer(DWORD offset, struct fcb *file) {
     return -1;
 }
 
+
 DWORD get_current_physical_sector(const struct fcb *file) {
     return superblock.DataSectorStart + file->current_physical_cluster * superblock.SectorsPerCluster + file->current_sector_on_cluster;
 }
 
+
 DWORD get_current_logical_sector(const struct fcb *file, DWORD sector) {
     return sector - (superblock.DataSectorStart + file->current_physical_cluster * superblock.SectorsPerCluster);
 }
+
 
 int set_current_physical_cluster(DWORD offset, struct fcb *file) {
     file->current_physical_cluster = file->dir_entry.record.firstCluster;
@@ -703,12 +772,14 @@ int set_current_physical_cluster(DWORD offset, struct fcb *file) {
     return 0;
 }
 
+
 int set_current_sector_on_cluster(DWORD offset, struct fcb *file) {
     DWORD leftover = offset - (offset / CLUSTER_SIZE) * CLUSTER_SIZE;
     file->current_sector_on_cluster = (leftover / SECTOR_SIZE + 1) - 1;
     file->current_byte_on_sector = leftover;
     return 0;
 }
+
 
 DWORD get_last_byte(DWORD file_size) {
     DWORD last_byte = (file_size - (file_size / SECTOR_SIZE) * SECTOR_SIZE) - 1;

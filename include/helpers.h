@@ -38,13 +38,13 @@ int resolve_path(char* path, struct directory_entry* entry);
 
 int create_file(char *filename, struct fcb *file);
 int read_file(struct fcb *file, char *buffer, int size);
-int write_file(struct fcb *file, char *content, int size);
+int write_file(struct fcb *file, char *buffer, int size);
 int delete_file(struct directory_entry *entry);
 int get_file(char *filename, struct fcb *file);
 int get_file_name(char *filepath, char *filename);
 int get_parent_filepath(char *filepath, char *parent_filepath);
 
-int add_entry(struct t2fs_record *record, struct fcb *dir);
+int add_entry(struct t2fs_record *record, struct directory_entry *dir);
 int remove_entry(struct directory_entry *entry);
 
 int is_handle_valid(int handle);
