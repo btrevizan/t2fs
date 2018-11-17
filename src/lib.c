@@ -590,11 +590,11 @@ int set_current_pointer(DWORD offset, struct fcb *file) {
 }
 
 DWORD get_current_physical_sector(const struct fcb *file) {
-    return superblock.DataSectorStart + file->current_physical_cluster * SectorsPerCluster + fcb->current_sector_on_cluster;
+    return superblock.DataSectorStart + file->current_physical_cluster * superblock.SectorsPerCluster + file->current_sector_on_cluster;
 }
 
 DWORD get_current_logical_sector(const struct fcb *file, DWORD sector) {
-    return sector - (superblock.DataSectorStart + file->current_physical_cluster * SectorsPerCluster);
+    return sector - (superblock.DataSectorStart + file->current_physical_cluster * superblock.SectorsPerCluster);
 }
 
 int set_current_physical_cluster(DWORD offset, struct fcb *file) {
