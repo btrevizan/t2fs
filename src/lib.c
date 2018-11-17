@@ -204,7 +204,21 @@ int mkdir2 (char *pathname) {
     unsigned int cluster = create_file(pathname, &file);
     if(cluster < 0) return -1;
 
+    // Fill directory with invalid entries
+    struct t2fs_record invalid_record;
+    invalid_record.TypeVal = TYPEVAL_INVALIDO;
 
+    unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
+    unsigned int n_records = (superblock.SectorsPerCluster * SECTOR_SIZE) / record_size;
+    unsigned int n_records_per_sector = n_records / superblock.SectorsPerCluster;
+    unsigned char records[SECTOR_SIZE];
+
+    for(int i = 0; i < n_records_per_sector; i++)
+        memcpy((records + i * record_size), &invalid_record, record_size);
+
+    unsigned int sector = get_current_physical_sector(&file);
+    for(int i = 0; i < superblock.SectorsPerCluster; i++)
+        write_sector(sector + i, records);
 
     // Create the current and parent entries
     struct t2fs_record current;
