@@ -371,7 +371,6 @@ int ln2(char *linkname, char *filename) {
 //int update_on_disk(struct directory_entry* entry);
 //int resolve_link(const struct directory_entry* link_entry, struct directory_entry* resolved_path);
 //int resolve_path(char* path, struct directory_entry* entry);
-//int delete_file(struct directory_entry *entry);
 
 int t2fs_init() {
     if(load_superblock() < 0) return -1;
@@ -416,6 +415,13 @@ int load_fat() {
         fat_n_sectors--;
     }
 
+    return 0;
+}
+
+
+int save_fat(unsigned int cluster) {
+    unsigned int sector = superblock.pFATSectorStart + (cluster / (SECTOR_SIZE / 4));
+    if(write_sector(sector, (unsigned char *)(fat + sector * SECTOR_SIZE)) < 0) return -1;
     return 0;
 }
 
@@ -555,6 +561,24 @@ int write_file(struct fcb *file, char *buffer, int size) {
 }
 
 
+int delete_file(struct directory_entry *entry) {
+    if(remove_entry(entry) < 0) return -1;
+
+    unsigned int cluster = entry->record.firstCluster;
+    unsigned int prev_cluster;
+
+    while(fat[cluster] != END_OF_FILE) {
+        prev_cluster = cluster;
+        cluster = fat[cluster];
+
+        dealloc_cluster(prev_cluster);
+    }
+
+    dealloc_cluster(cluster);
+    return 0;
+}
+
+
 int get_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
     if(resolve(filename, &entry) < 0) return -1;
@@ -624,12 +648,14 @@ int add_entry(struct t2fs_record *record, struct directory_entry *dir) {
 
 int remove_entry(struct directory_entry *entry) {
     unsigned char buffer[SECTOR_SIZE];
-    read_sector(entry->sector, buffer);
+    if(read_sector(entry->sector, buffer) < 0) return -1;
 
     struct t2fs_record invalid;
     invalid.TypeVal = TYPEVAL_INVALIDO;
 
     memcpy((buffer + entry->byte_on_sector), &invalid, sizeof(struct t2fs_record));
+    if(write_sector(entry->sector, buffer) < 0) return -1;
+
     return 0;
 }
 
@@ -785,11 +811,17 @@ unsigned int alloc_cluster() {
 
     fat[cluster] = END_OF_FILE;
 
-    unsigned int sector = superblock.pFATSectorStart + (cluster / (SECTOR_SIZE / 4));
-    if(write_sector(sector, (unsigned char *)(fat + sector * SECTOR_SIZE)) < 0) return -1;
-
+    if(save_fat(cluster) < 0) return -1;
     return cluster;
 }
+
+
+int dealloc_cluster(unsigned int cluster) {
+    if(fat[cluster] == BAD_CLUSTER) return -1;
+    fat[cluster] = FREE_CLUSTER;
+    return save_fat(cluster);
+}
+
 
 unsigned int add_cluster(struct fcb *file) {
     unsigned int cluster = file->current_physical_cluster;
@@ -800,9 +832,7 @@ unsigned int add_cluster(struct fcb *file) {
 
     fat[cluster] = new_cluster;
 
-    unsigned int sector = superblock.pFATSectorStart + (cluster / (SECTOR_SIZE / 4));
-    if(write_sector(sector, (unsigned char *)(fat + sector * SECTOR_SIZE)) < 0) return -1;
-
+    if(save_fat(cluster) < 0) return -1;
     return new_cluster;
 }
 

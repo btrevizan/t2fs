@@ -28,6 +28,7 @@ struct fcb {
 int t2fs_init();
 int load_superblock();
 int load_fat();
+int save_fat(unsigned int cluster);
 
 int fat_bytes_size();
 
@@ -66,6 +67,7 @@ int next_cluster(struct fcb *file);
 int prev_cluster(struct fcb *file);
 int free_cluster(DWORD cluster);
 unsigned int alloc_cluster();
+int dealloc_cluster(unsigned int cluster);
 unsigned int add_cluster(struct fcb *file);
 
 int set_current_pointer(DWORD offset, struct fcb *file);
