@@ -204,6 +204,8 @@ int mkdir2 (char *pathname) {
     unsigned int cluster = create_file(pathname, &file);
     if(cluster < 0) return -1;
 
+
+
     // Create the current and parent entries
     struct t2fs_record current;
     struct t2fs_record parent;
@@ -289,9 +291,6 @@ DIR2 opendir2 (char *pathname) {
     struct fcb file;
     if(get_file(pathname, &file) < 0) return -1;
     if(is_dir(&file.dir_entry) < 0) return -1;
-
-    // Set to the first entry that is not the ./ and ../ entries
-    file.current_byte_on_sector = sizeof(struct t2fs_record) * 2;
 
     open_dirs[0] = file;
     return 0;
@@ -486,6 +485,21 @@ int read_file(struct fcb *file, char *buffer, int size) {
     return bytes_read;
 }
 
+int get_file(char *filename, struct fcb *file) {
+    struct directory_entry entry;
+
+    if(resolve_path(filename, &entry) < 0) return -1;
+
+    file->dir_entry = entry;
+    file->current_physical_cluster = entry.record.firstCluster;
+    file->current_sector_on_cluster = 0;
+    file->current_byte_on_sector = 0;
+    file->num_bytes_read = 0;
+    file->is_valid = 1;
+
+    return 0;
+}
+
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
     if(handle >= N_OPEN_FILES) return -1;
@@ -509,10 +523,10 @@ int is_file(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_REGULAR;
 }
 
+
 int is_dir(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_DIRETORIO;
 }
-
 
 int is_link(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_LINK;
@@ -545,21 +559,6 @@ int is_linkd(const struct directory_entry *file) {
 int exists(char *filepath) {
     struct directory_entry entry;
     if(resolve_path(filepath, &entry) == 0) return 1;
-    return 0;
-}
-
-int get_file(char *filename, struct fcb *file) {
-    struct directory_entry entry;
-
-    if(resolve_path(filename, &entry) < 0) return -1;
-
-    file->dir_entry = entry;
-    file->current_physical_cluster = entry.record.firstCluster;
-    file->current_sector_on_cluster = 0;
-    file->current_byte_on_sector = 0;
-    file->num_bytes_read = 0;
-    file->is_valid = 1;
-
     return 0;
 }
 
