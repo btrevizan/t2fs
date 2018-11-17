@@ -421,7 +421,7 @@ int create_file(char *filename, struct fcb *file) {
     char *name = (char *) malloc(MAX_FILE_NAME_SIZE);
     get_file_name(filename, name);
 
-    strncpy(file->dir_entry.record.name, name, 51);
+    strncpy(file->dir_entry.record.name, name, strlen(file->dir_entry.record.name));
     file->dir_entry.record.bytesFileSize = 0;
     file->dir_entry.record.clustersFileSize = 1;
     file->dir_entry.record.firstCluster = cluster;
