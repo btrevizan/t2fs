@@ -28,32 +28,41 @@ struct fcb {
 int t2fs_init();
 int load_superblock();
 int load_fat();
+
 int update_on_disk(struct directory_entry* entry);
+
 int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
 int resolve_path(char* path, struct directory_entry* entry);
+
+int create_file(char *filename, struct fcb *file);
+int read_file(struct fcb *file, char *buffer, int size);
+int write_file(struct fcb *file, char *content, int size);
 int delete_file(struct directory_entry *entry);
+int get_file(char *filename, struct fcb *file);
+
+int add_entry(struct t2fs_record *record, struct fcb *dir);
+int remove_entry(struct directory_entry *entry);
+
 int is_handle_valid(int handle);
+int get_free_handle();
+
 BYTE file_type(const struct directory_entry *file);
 int is_file(const struct directory_entry *file);
 int is_dir(const struct directory_entry *file);
 int is_link(const struct directory_entry *file);
 int is_linkf(const struct directory_entry *file);
 int is_linkd(const struct directory_entry *file);
-int exists(char *filepath);
 int is_empty(const struct directory_entry *file);
-int get_free_handle();
-int create(char *filename, struct fcb *file);
-int set_current_pointer(DWORD offset, struct fcb *file);
-int get_file(char *filename, struct fcb *file);
-DWORD get_current_physical_sector(const struct fcb *file);
-DWORD get_current_logical_sector(const struct fcb *file, DWORD sector);
+int exists(char *filepath);
+
 int next_sector(struct fcb *file);
 int next_cluster(struct fcb *file);
 int prev_cluster(struct fcb *file);
+int free_cluster(DWORD cluster);
+
+int set_current_pointer(DWORD offset, struct fcb *file);
+DWORD get_current_physical_sector(const struct fcb *file);
+DWORD get_current_logical_sector(const struct fcb *file, DWORD sector);
 int set_current_physical_cluster(DWORD offset, struct fcb *file);
 int set_current_sector_on_cluster(DWORD offset, struct fcb *file);
-int write(struct fcb *file, char *content, int size);
 DWORD get_last_byte(DWORD fileSize);
-int free_cluster(DWORD cluster);
-int add_entry(struct t2fs_record *record, struct fcb *dir);
-int remove_entry(struct directory_entry *entry);

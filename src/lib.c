@@ -40,7 +40,7 @@ FILE2 create2 (char *filename) {
 
     struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_REGULAR;
-    if(create(filename, &file) < 0) return -1;
+    if(create_file(filename, &file) < 0) return -1;
 
     open_files[i] = file;
     return i;
@@ -96,48 +96,10 @@ int read2 (FILE2 handle, char *buffer, int size) {
     if(is_handle_valid(handle) < 0) return -1;
 
     struct fcb file = open_files[handle];
-    if(size > file.dir_entry.record.bytesFileSize) return -1;
-
-    unsigned int sector = get_current_physical_sector(&file);
-    unsigned char aux_buffer[SECTOR_SIZE];
-
-    // Read current sector and adjust strncpy to start on current pointer
-    if(read_sector(sector, aux_buffer) < 0) return -1;
-
-    unsigned int n = SECTOR_SIZE - file.current_byte_on_sector;
-    if(n > size) n = size;
-
-    unsigned int bytes_read = n;
-    strncpy(buffer, (const char *)(aux_buffer + file.current_byte_on_sector), n);
-
-    // Read the rest, sector by sector
-    while(bytes_read < size) {
-        if(read_sector(sector, aux_buffer) < 0) break;
-
-        if(next_sector(&file) < 0) { // EOF
-            n = get_last_byte(file.dir_entry.record.bytesFileSize);
-            strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
-            bytes_read += n;
-            break;
-        }
-
-        sector = get_current_physical_sector(&file);
-
-        n = SECTOR_SIZE;
-        if(bytes_read + n > size) n = size - bytes_read;
-
-        strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
-        bytes_read += n;
-
-        if(n != SECTOR_SIZE) break;
-    }
-
-    file.current_byte_on_sector = n % SECTOR_SIZE;
-    strncpy(file.current_sector_data, (const char *)aux_buffer, n);
-    file.num_bytes_read = n;
+    int result = read_file(&file, buffer, size);
 
     open_files[handle] = file;
-    return bytes_read;
+    return result;
 }
 
 
@@ -239,7 +201,7 @@ int mkdir2 (char *pathname) {
     struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_DIRETORIO;
 
-    unsigned int cluster = create(pathname, &file);
+    unsigned int cluster = create_file(pathname, &file);
     if(cluster < 0) return -1;
 
     // Create the current and parent entries
@@ -341,7 +303,7 @@ DIR2 opendir2 (char *pathname) {
 int readdir2 (DIR2 handle, DIRENT2 *dentry) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
-
+        
 	return -1;
 }
 
@@ -367,8 +329,8 @@ int ln2(char *linkname, char *filename) {
 	struct fcb file;
 	file.dir_entry.record.TypeVal = TYPEVAL_LINK;
 
-	if (create(linkname, &file) < 0) return -1;
-	if (write(&file, filename, (int)strlen(filename)) < 0) return -1;
+	if (create_file(linkname, &file) < 0) return -1;
+	if (write_file(&file, filename, (int)strlen(filename)) < 0) return -1;
 
 	return 0;
 }
@@ -381,8 +343,8 @@ int ln2(char *linkname, char *filename) {
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
 //int is_empty(const struct directory_entry *file);
-//int create(char *filename, fcb *file);
-//int write(struct fcb *file, char *content, int size);
+//int create_file(char *filename, fcb *file);
+//int write_file(struct fcb *file, char *content, int size);
 //int add_entry(struct t2fs_record *record, struct fcb *dir);
 //int remove_entry(struct directory_entry *entry);
 
@@ -436,11 +398,64 @@ int load_fat() {
     return 0;
 }
 
+int read_file(struct fcb *file, char *buffer, int size) {
+    if(size > file->dir_entry.record.bytesFileSize) return -1;
+
+    unsigned int sector = get_current_physical_sector(file);
+    unsigned char aux_buffer[SECTOR_SIZE];
+
+    // Read current sector and adjust strncpy to start on current pointer
+    if(read_sector(sector, aux_buffer) < 0) return -1;
+
+    unsigned int n = SECTOR_SIZE - file->current_byte_on_sector;
+    if(n > size) n = size;
+
+    unsigned int bytes_read = n;
+    strncpy(buffer, (const char *)(aux_buffer + file->current_byte_on_sector), n);
+
+    // Read the rest, sector by sector
+    while(bytes_read < size) {
+        if(read_sector(sector, aux_buffer) < 0) break;
+
+        if(next_sector(file) < 0) { // EOF
+            n = get_last_byte(file->dir_entry.record.bytesFileSize);
+            strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
+            bytes_read += n;
+            break;
+        }
+
+        sector = get_current_physical_sector(file);
+
+        n = SECTOR_SIZE;
+        if(bytes_read + n > size) n = size - bytes_read;
+
+        strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
+        bytes_read += n;
+
+        if(n != SECTOR_SIZE) break;
+    }
+
+    file->current_byte_on_sector = n % SECTOR_SIZE;
+    strncpy(file->current_sector_data, (const char *)aux_buffer, n);
+    file->num_bytes_read = n;
+
+    return bytes_read;
+}
+
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
     if(handle >= N_OPEN_FILES) return -1;
     if(open_files[handle].is_valid == 1) return -1;
     return 0;
+}
+
+int get_free_handle() {
+    for(int i = 0; i < N_OPEN_FILES; i++) {
+        if(open_files[i].is_valid == 0)
+            return i;
+    }
+
+    return -1;
 }
 
 BYTE file_type(const struct directory_entry *file) {
@@ -455,10 +470,10 @@ int is_dir(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_DIRETORIO;
 }
 
+
 int is_link(const struct directory_entry *file) {
     return file_type(file) == TYPEVAL_LINK;
 }
-
 
 int is_linkf(const struct directory_entry *file) {
     if(is_link(file) < 0) return -1;
@@ -489,26 +504,6 @@ int exists(char *filepath) {
     return resolve_path(filepath, &entry);
 }
 
-int get_free_handle() {
-    for(int i = 0; i < N_OPEN_FILES; i++) {
-       if(open_files[i].is_valid == 0)
-           return i;
-    }
-
-   return -1;
-}
-
-int set_current_pointer(DWORD offset, struct fcb *file) {
-    if(offset > file->dir_entry.record.bytesFileSize) return -1;
-
-    if(offset == -1)
-        offset = file->dir_entry.record.bytesFileSize;
-
-    set_current_physical_cluster(offset, file);
-    set_current_sector_on_cluster(offset, file);
-    return -1;
-}
-
 int get_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
 
@@ -522,14 +517,6 @@ int get_file(char *filename, struct fcb *file) {
     file->is_valid = 1;
 
     return 0;
-}
-
-DWORD get_current_physical_sector(const struct fcb *file) {
-    return (file->current_physical_cluster - 1) * superblock.SectorsPerCluster + file->current_sector_on_cluster;
-}
-
-DWORD get_current_logical_sector(const struct fcb *file, DWORD sector) {
-    return sector - (file->current_physical_cluster - 1) * superblock.SectorsPerCluster;
 }
 
 int next_sector(struct fcb *file) {
@@ -571,6 +558,35 @@ int prev_cluster(struct fcb *file) {
     return 0;
 }
 
+int free_cluster(DWORD cluster) {
+    int n_fat_entries = superblock.NofSectors / superblock.SectorsPerCluster;
+
+    if(cluster < 0) return -1;
+    if(cluster >= n_fat_entries) return -1;
+
+    fat[cluster] = FREE_CLUSTER;
+    return 0;
+}
+
+int set_current_pointer(DWORD offset, struct fcb *file) {
+    if(offset > file->dir_entry.record.bytesFileSize) return -1;
+
+    if(offset == -1)
+        offset = file->dir_entry.record.bytesFileSize;
+
+    set_current_physical_cluster(offset, file);
+    set_current_sector_on_cluster(offset, file);
+    return -1;
+}
+
+DWORD get_current_physical_sector(const struct fcb *file) {
+    return (file->current_physical_cluster - 1) * superblock.SectorsPerCluster + file->current_sector_on_cluster;
+}
+
+DWORD get_current_logical_sector(const struct fcb *file, DWORD sector) {
+    return sector - (file->current_physical_cluster - 1) * superblock.SectorsPerCluster;
+}
+
 int set_current_physical_cluster(DWORD offset, struct fcb *file) {
     file->current_physical_cluster = file->dir_entry.record.firstCluster;
 
@@ -591,14 +607,4 @@ DWORD get_last_byte(DWORD file_size) {
     DWORD last_byte = (file_size - (file_size / SECTOR_SIZE) * SECTOR_SIZE) - 1;
     if(last_byte == -1) last_byte = SECTOR_SIZE - 1;
     return last_byte;
-}
-
-int free_cluster(DWORD cluster) {
-    int n_fat_entries = superblock.NofSectors / superblock.SectorsPerCluster;
-
-    if(cluster < 0) return -1;
-    if(cluster >= n_fat_entries) return -1;
-
-    fat[cluster] = FREE_CLUSTER;
-    return 0;
 }
