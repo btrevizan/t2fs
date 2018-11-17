@@ -257,9 +257,9 @@ int rmdir2 (char *pathname) {
     struct directory_entry entry;
 
     if(resolve_path(pathname, &entry) < 0) return -1;
-    if(is_dir(&entry) < 0) return -1;
-    if(is_empty(&entry) < 0) return -1;
-    if(is_linkf(&entry) > 0) return -1;
+    if(!is_dir(&entry)) return -1;
+    if(!is_empty(&entry)) return -1;
+    if(is_linkf(&entry)) return -1;
 
     return delete_file(&entry);
 }
@@ -268,6 +268,14 @@ int rmdir2 (char *pathname) {
 int chdir2 (char *pathname) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
+
+    struct directory_entry entry;
+    if(resolve_path(pathname, &entry) < 0) return -1;
+
+    if(entry.record.TypeVal == TYPEVAL_LINK) {
+        struct directory_entry resolved;
+        if(resolve_link(&entry, &resolved) < 0) return -1;
+    }
 
     free(current_dir);
 
@@ -361,7 +369,7 @@ int ln2(char *linkname, char *filename) {
 // HELPERS
 // -------------------------------------------------------------------------------------------------
 //int update_on_disk(struct directory_entry* entry);
-//int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
+//int resolve_link(const struct directory_entry* link_entry, struct directory_entry* resolved_path);
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
 
@@ -417,10 +425,23 @@ int fat_bytes_size() {
 }
 
 
+int resolve(char *path, struct directory_entry *entry) {
+    if(resolve_path(path, entry) < 0) return -1;
+
+    if(is_link(entry)) {
+        struct directory_entry resolved;
+        if(resolve_link((const struct directory_entry *) entry, &resolved) < 0) return -1;
+        *(entry) = resolved;
+    }
+
+    return 0;
+}
+
+
 int create_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
     if(resolve_path(filename, &entry) < 0) return -1;
-    if(exists(filename) == 1) return -1;
+    if(exists(filename)) return -1;
 
     unsigned int cluster = alloc_cluster();
     if(cluster < 0) return -1;
@@ -536,7 +557,7 @@ int write_file(struct fcb *file, char *buffer, int size) {
 
 int get_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
-    if(resolve_path(filename, &entry) < 0) return -1;
+    if(resolve(filename, &entry) < 0) return -1;
     return create_fcb(&entry, file);
 }
 
@@ -652,27 +673,19 @@ int is_link(const struct directory_entry *file) {
 
 
 int is_linkf(const struct directory_entry *file) {
-    if(is_link(file) < 0) return -1;
+    if(!is_link(file)) return -1;
 
     struct directory_entry entry;
-    char resolved_path[100];
-
-    if(resolve_link(file, resolved_path, 100) < 0) return -1;
-    if(resolve_path(resolved_path, &entry) < 0) return -1;
-
+    if(resolve_link(file, &entry) < 0) return -1;
     return is_file(&entry);
 }
 
 
 int is_linkd(const struct directory_entry *file) {
-    if(is_link(file) < 0) return -1;
+    if(!is_link(file)) return -1;
 
     struct directory_entry entry;
-    char resolved_path[100];
-
-    if(resolve_link(file, resolved_path, 100) < 0) return -1;
-    if(resolve_path(resolved_path, &entry) < 0) return -1;
-
+    if(resolve_link(file, &entry) < 0) return -1;
     return is_dir(&entry);
 }
 
