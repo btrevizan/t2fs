@@ -234,7 +234,7 @@ int mkdir2 (char *pathname) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-    if(open_dirs[0].is_valid == 0) return 0;
+    if(open_dirs[0].is_valid == 1) return -1;
 
     struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_DIRETORIO;
@@ -355,6 +355,9 @@ int t2fs_init() {
     // Define CLUSTER_SIZE
     CLUSTER_SIZE = superblock.SectorsPerCluster * SECTOR_SIZE;
 
+    // Open an invalid dir
+    open_dirs[0].is_valid = 0;
+
     first_run = 0;
     return 0;
 }
@@ -393,7 +396,7 @@ int load_fat() {
 int is_handle_valid(int handle) {
     if(handle < 0) return -1;
     if(handle >= N_OPEN_FILES) return -1;
-    if(open_files[handle].is_valid < 0) return -1;
+    if(open_files[handle].is_valid == 1) return -1;
     return 0;
 }
 
