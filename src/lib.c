@@ -329,7 +329,7 @@ int closedir2 (DIR2 handle) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	if (is_handle_valid(handle) < 0) return -1;
+	if (handle != 0) return -1;
 
 	open_dirs[handle].is_valid = 0;
 	return 0;
