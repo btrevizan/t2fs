@@ -370,7 +370,6 @@ int ln2(char *linkname, char *filename) {
 //int resolve_link(const struct directory_entry* link_entry, char* resolved_path, int size);
 //int resolve_path(char* path, struct directory_entry* entry);
 //int delete_file(struct directory_entry *entry);
-//int is_empty(const struct directory_entry *file);
 //int write_file(struct fcb *file, char *content, int size);
 //int add_entry(struct t2fs_record *record, struct dir_entry *dir);
 //int remove_entry(struct directory_entry *entry);
@@ -568,6 +567,29 @@ int is_linkd(const struct directory_entry *file) {
     if(resolve_path(resolved_path, &entry) < 0) return -1;
 
     return is_dir(&entry);
+}
+
+int is_empty(const struct directory_entry *file) {
+    if(is_dir(file) < 0) return -1;
+
+    struct t2fs_record record;
+    unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
+    unsigned int sector = file->sector;
+    unsigned char buffer[SECTOR_SIZE];
+
+    for(int i = 0; i < superblock.SectorsPerCluster; i++) {
+        read_sector(sector + i, buffer);
+
+        for(int j = 0; j < SECTOR_SIZE / record_size; j++) {
+            if(!(i == 0 && (j == 0 || j == 1))) {
+                memcpy(&record, (buffer + j * record_size), record_size);
+                if(record.TypeVal == TYPEVAL_DIRETORIO || record.TypeVal == TYPEVAL_REGULAR || record.TypeVal == TYPEVAL_LINK)
+                    return 0;
+            }
+        }
+    }
+
+    return 1;
 }
 
 int exists(char *filepath) {
