@@ -392,7 +392,7 @@ int load_superblock() {
 }
 
 int load_fat() {
-    unsigned int fat_size = (superblock.NofSectors / superblock.SectorsPerCluster) * 4;
+    unsigned int fat_size = ((superblock.NofSectors - superblock.DataSectorStart) / superblock.SectorsPerCluster) * 4;
     unsigned int fat_n_sectors = fat_size / SECTOR_SIZE;
     unsigned int sector = superblock.pFATSectorStart;
     unsigned char buffer[SECTOR_SIZE];
