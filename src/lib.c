@@ -303,8 +303,24 @@ DIR2 opendir2 (char *pathname) {
 int readdir2 (DIR2 handle, DIRENT2 *dentry) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
-        
-	return -1;
+
+    if(handle != 0) return -1;
+    struct fcb file = open_dirs[handle];
+
+    char *buffer = (char *) malloc(sizeof(struct t2fs_record));
+    if(!buffer) return -1;
+
+    if(read_file(&file, buffer, sizeof(struct t2fs_record)) < 0) return -1;
+
+    struct t2fs_record record;
+
+    memcpy(&record, buffer, sizeof(struct t2fs_record));
+
+    strcpy(dentry->name, record.name);
+    dentry->fileType = record.TypeVal;
+    dentry->fileSize = record.bytesFileSize;
+
+    return 0;
 }
 
 
