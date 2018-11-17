@@ -240,6 +240,9 @@ int mkdir2 (char *pathname) {
     file.dir_entry.record.TypeVal = TYPEVAL_DIRETORIO;
 
     if(create(pathname, &file) < 0) return -1;
+
+    // TODO: Insert current and parent dir entries
+
     return 0;
 }
 
@@ -300,9 +303,11 @@ DIR2 opendir2 (char *pathname) {
     if(get_file(pathname, &file) < 0) return -1;
     if(is_dir(&file.dir_entry) < 0) return -1;
 
+    // Set to the first entry that is not the ./ and ../ entries
+    file.current_byte_on_sector = sizeof(struct t2fs_record) * 2;
+
     open_dirs[0] = file;
     return 0;
-
 }
 
 
