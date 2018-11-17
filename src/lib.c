@@ -265,7 +265,13 @@ int chdir2 (char *pathname) {
     if(first_run == 1)
         if(t2fs_init() < 0) return -1;
 
-	return -1;
+    free(current_dir);
+
+    current_dir = (char *) malloc(strlen(pathname));
+    if(!current_dir) return -1;
+
+    strcpy(current_dir, pathname);
+    return 0;
 }
 
 
