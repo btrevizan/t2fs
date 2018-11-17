@@ -384,10 +384,7 @@ int t2fs_init() {
 }
 
 int load_superblock() {
-    unsigned char buffer[SECTOR_SIZE];
-    if(read_sector(0, buffer) < 0) return -1;
-
-    superblock = *((struct t2fs_superbloco*) buffer);
+    if(read_sector(0, (unsigned char *) (&superblock)) < 0) return -1;
     return 0;
 }
 
