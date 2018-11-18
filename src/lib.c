@@ -15,8 +15,9 @@ static unsigned int *fat;
 static unsigned int CLUSTER_SIZE;
 
 int identify2 (char *name, int size) {
-	if(first_run == 1)
-	    if(t2fs_init() < 0) return -1;
+	if(first_run == 1) {
+        if(t2fs_init() < 0) return -1;
+    }
 
 	strncpy (name, "Bernardo Trevizan - 00285638\nEduarda Trindade - 00274709\nGabriel Haggstrom - 00228552", size);
 	return 0;
@@ -24,8 +25,9 @@ int identify2 (char *name, int size) {
 
 
 FILE2 create2 (char *filename) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     int i = get_free_handle();
     if(i < 0) return -1; // N_FILES_OPEN opened
@@ -48,8 +50,9 @@ FILE2 create2 (char *filename) {
 
 
 int delete2 (char *filename) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     struct directory_entry dir_entry;
 
@@ -61,8 +64,9 @@ int delete2 (char *filename) {
 
 
 FILE2 open2 (char *filename) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     int i = get_free_handle();
     if(i < 0) return -1; // N_FILES_OPEN opened
@@ -89,8 +93,9 @@ int close2 (FILE2 handle) {
 
 
 int read2 (FILE2 handle, char *buffer, int size) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     if(is_handle_valid(handle) < 0) return -1;
 
@@ -103,8 +108,9 @@ int read2 (FILE2 handle, char *buffer, int size) {
 
 
 int write2 (FILE2 handle, char *buffer, int size) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     if(is_handle_valid(handle) < 0) return -1;
 
@@ -117,8 +123,9 @@ int write2 (FILE2 handle, char *buffer, int size) {
 
 
 int truncate2 (FILE2 handle) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     if(is_handle_valid(handle) < 0) return -1;
     struct fcb file = open_files[handle];
@@ -195,8 +202,9 @@ int seek2 (FILE2 handle, DWORD offset) {
 
 
 int mkdir2 (char *pathname) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     if(open_dirs[0].is_valid == 1) return -1;
 
@@ -253,8 +261,9 @@ int mkdir2 (char *pathname) {
 
 
 int rmdir2 (char *pathname) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     struct directory_entry entry;
 
@@ -268,8 +277,9 @@ int rmdir2 (char *pathname) {
 
 
 int chdir2 (char *pathname) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     struct directory_entry entry;
     if(resolve_path(pathname, &entry) < 0) return -1;
@@ -290,8 +300,9 @@ int chdir2 (char *pathname) {
 
 
 int getcwd2 (char *pathname, int size) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     if(strlen(current_dir) > size) return -1;
     strncpy(pathname, current_dir, size);
@@ -301,8 +312,9 @@ int getcwd2 (char *pathname, int size) {
 
 
 DIR2 opendir2 (char *pathname) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     DIR2 handle = 0;
 
@@ -318,8 +330,9 @@ DIR2 opendir2 (char *pathname) {
 
 
 int readdir2 (DIR2 handle, DIRENT2 *dentry) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
     if(handle != 0) return -1;
     struct fcb file = open_dirs[handle];
@@ -354,8 +367,9 @@ int closedir2 (DIR2 handle) {
 
 
 int ln2(char *linkname, char *filename) {
-	if(first_run == 1)
-	    if(t2fs_init() < 0) return -1;
+	if(first_run == 1) {
+        if(t2fs_init() < 0) return -1;
+    }
 	
 	if (strlen(filename) > CLUSTER_SIZE) return -1;
 
