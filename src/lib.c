@@ -102,6 +102,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
     }
 
     if(!is_handle_valid(handle)) return -1;
+    if(open_files[handle].is_valid != 1) return -1;
 
     struct fcb file = open_files[handle];
     int result = read_file(&file, buffer, size);
@@ -117,6 +118,7 @@ int write2 (FILE2 handle, char *buffer, int size) {
     }
 
     if(!is_handle_valid(handle)) return -1;
+    if(open_files[handle].is_valid != 1) return -1;
 
     struct fcb file = open_files[handle];
     int result = write_file(&file, buffer, size);
