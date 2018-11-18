@@ -371,7 +371,6 @@ int ln2(char *linkname, char *filename) {
 // -------------------------------------------------------------------------------------------------
 // HELPERS
 // -------------------------------------------------------------------------------------------------
-//int update_on_disk(struct directory_entry* entry);
 
 int t2fs_init() {
     if(load_superblock() < 0) return -1;
@@ -389,6 +388,21 @@ int t2fs_init() {
     open_dirs[0].is_valid = 0;
 
     first_run = 0;
+    return 0;
+}
+
+
+int update_on_disk(struct directory_entry* entry) {
+    struct t2fs_record entries[SECTOR_SIZE / sizeof(struct t2fs_record)];
+    int entry_on_sector;
+
+    if (read_sector(entry->sector, (unsigned char *) entries) < 0) return -1;
+
+    entry_on_sector = entry->byte_on_sector / sizeof(struct t2fs_record);
+    entries[entry_on_sector] = entry->record;
+
+    if (write_sector(entry->sector, (unsigned char *) entries) < 0) return -1;
+
     return 0;
 }
 
