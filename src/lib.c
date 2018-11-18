@@ -44,6 +44,9 @@ FILE2 create2 (char *filename) {
 
     struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_REGULAR;
+    file.dir_entry.record.bytesFileSize = 0;
+    file.dir_entry.record.clustersFileSize = 1;
+
     if(create_file(filename, &file) < 0) return -1;
 
     open_files[i] = file;
@@ -211,6 +214,8 @@ int mkdir2 (char *pathname) {
 
     struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_DIRETORIO;
+    file.dir_entry.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+    file.dir_entry.record.clustersFileSize = 1;
 
     unsigned int cluster = create_file(pathname, &file);
     if(cluster < 0) return -1;
@@ -371,7 +376,9 @@ int ln2(char *linkname, char *filename) {
 	if (strlen(filename) > CLUSTER_SIZE) return -1;
 
 	struct fcb file;
-	file.dir_entry.record.TypeVal = TYPEVAL_LINK;
+    file.dir_entry.record.TypeVal = TYPEVAL_LINK;
+    file.dir_entry.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+    file.dir_entry.record.clustersFileSize = 1;
 
 	if (create_file(linkname, &file) < 0) return -1;
 	if (write_file(&file, filename, (int)strlen(filename)) < 0) return -1;
@@ -556,8 +563,6 @@ int create_file(char *filename, struct fcb *file) {
     get_file_name(filename, name);
 
     strncpy(file->dir_entry.record.name, name, strlen(file->dir_entry.record.name));
-    file->dir_entry.record.bytesFileSize = 0;
-    file->dir_entry.record.clustersFileSize = 1;
     file->dir_entry.record.firstCluster = cluster;
 
     struct fcb parent;
