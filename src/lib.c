@@ -365,7 +365,7 @@ int ln2(char *linkname, char *filename) {
 	if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
     }
-	
+
 	if (strlen(filename) > CLUSTER_SIZE) return -1;
 
 	struct fcb file;
@@ -534,7 +534,6 @@ int fat_bytes_size() {
 
 int resolve(char *path, struct directory_entry *entry, char *resolved_path, int size) {
     if(resolve_path(path, entry, resolved_path, size) < 0) return -1;
-
     if(is_link(entry)) {
         struct directory_entry resolved_entry;
         if(resolve_link((struct directory_entry *) entry, &resolved_entry, resolved_path, size) < 0) return -1;
@@ -545,15 +544,13 @@ int resolve(char *path, struct directory_entry *entry, char *resolved_path, int 
 }
 
 
-int create_file(char *filename, struct fcb *file) {
-    struct directory_entry entry;
-    if(resolve_path(filename, &entry, NULL, 0) < 0) return -1;
+int create_file(char *filename, struct fcb *file) { 
     if(exists(filename)) return -1;
 
     unsigned int cluster = alloc_cluster();
     if(cluster < 0) return -1;
 
-    char *name = (char *) malloc(MAX_FILE_NAME_SIZE);
+    char name[MAX_FILE_NAME_SIZE];
     get_file_name(filename, name);
 
     strncpy(file->dir_entry.record.name, name, strlen(file->dir_entry.record.name));
@@ -564,7 +561,7 @@ int create_file(char *filename, struct fcb *file) {
     struct fcb parent;
     char *parent_pathname = (char *) malloc(strlen(filename) + strlen("/.."));
     get_parent_filepath(filename, parent_pathname);
-
+    
     if(get_file(parent_pathname, &parent) < 0) return -1;
     if(add_entry(&file->dir_entry, &parent.dir_entry) < 0) return -1;
 
@@ -706,8 +703,11 @@ int create_fcb(const struct directory_entry *entry, struct fcb *file) {
 
 
 int get_file_name(char *filepath, char *filename) {
-    char *dir = strtok(filepath, "/");
+    char aux[strlen(filepath)];
+    strcpy(aux, filepath);
 
+    char *dir = strtok(aux, "/");
+   
     while(dir) {
         strcpy(filename, dir);
         dir = strtok(NULL, "/");
@@ -718,7 +718,7 @@ int get_file_name(char *filepath, char *filename) {
 
 
 int get_parent_filepath(char *filepath, char *parent_pathname) {
-    strncpy(parent_pathname, filepath, strlen(filepath) - 1);
+    strncpy(parent_pathname, filepath, strlen(filepath));
     strcat(parent_pathname, "/..");
     return 0;
 }
