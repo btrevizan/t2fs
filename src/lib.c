@@ -245,7 +245,7 @@ int mkdir2 (char *pathname) {
 
     // Get parent first cluster
     struct directory_entry entry;
-    char *parent_pathname = (char *) malloc(strlen(pathname) + strlen("/.."));
+    char parent_pathname[strlen(pathname) + strlen(current_dir)];
     get_parent_filepath(pathname, parent_pathname);
 
     if(resolve_path(parent_pathname, &entry, NULL, 0) < 0) return -1;
@@ -559,9 +559,9 @@ int create_file(char *filename, struct fcb *file) {
     file->dir_entry.record.firstCluster = cluster;
 
     struct fcb parent;
-    char *parent_pathname = (char *) malloc(strlen(filename) + strlen("/.."));
+    char parent_pathname[strlen(filename) + strlen(current_dir)];
     get_parent_filepath(filename, parent_pathname);
-    
+
     if(get_file(parent_pathname, &parent) < 0) return -1;
     if(add_entry(&file->dir_entry, &parent.dir_entry) < 0) return -1;
 
@@ -718,8 +718,34 @@ int get_file_name(char *filepath, char *filename) {
 
 
 int get_parent_filepath(char *filepath, char *parent_pathname) {
-    strncpy(parent_pathname, filepath, strlen(filepath));
-    strcat(parent_pathname, "/..");
+    char aux1[strlen(filepath)];
+    char aux2[strlen(filepath)];
+    strcpy(aux1, filepath);
+
+    if(aux1[0] == '/')
+        strcpy(parent_pathname, "/");
+
+    char *dir = strtok(aux1, "/");
+    if(strcmp(dir, filepath) == 0) {
+        strcpy(parent_pathname, current_dir);
+        return 0;
+    }
+    
+    parent_pathname[0] = '\0';
+
+    char *next = strtok(aux2, "/");
+    next = strtok(NULL, "/");
+
+    while(next) {
+        strcat(parent_pathname, dir);
+        strcat(parent_pathname, "/");
+
+        dir = strtok(NULL, "/");
+        next = strtok(NULL, "/");
+    } 
+
+    parent_pathname[strlen(parent_pathname) - 1] = '\0';
+
     return 0;
 }
 
