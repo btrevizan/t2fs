@@ -369,8 +369,6 @@ int ln2(char *linkname, char *filename) {
 // HELPERS
 // -------------------------------------------------------------------------------------------------
 //int update_on_disk(struct directory_entry* entry);
-//int resolve_link(const struct directory_entry* link_entry, struct directory_entry* resolved_path);
-//int resolve_path(char* path, struct directory_entry* entry);
 
 int t2fs_init() {
     if(load_superblock() < 0) return -1;
@@ -388,6 +386,66 @@ int t2fs_init() {
     open_dirs[0].is_valid = 0;
 
     first_run = 0;
+    return 0;
+}
+
+
+int resolve_link(const struct directory_entry* link_entry, struct directory_entry* resolved_entry) {
+    char path[CLUSTER_SIZE];
+    struct fcb file;
+
+    while (1) {
+        create_fcb(link_entry, &file);
+        read_file(&file, path, CLUSTER_SIZE);
+        if (resolve_path(path, resolved_entry) < 0) return -1;
+        if (!is_link(resolved_entry)) break;
+        link_entry = resolved_entry;
+    }
+
+    return 0;
+}
+
+
+int resolve_path(char* path, struct directory_entry* entry) {
+    char *name;
+    struct directory_entry *current_entry;
+    struct directory_entry initial_entry;
+    
+    name = strtok(path, "/");
+
+    if (strcmp(name, "") == 0) {
+        // Caminho absoluto começando com /
+
+        // Cria uma entry correspondente à raiz
+        initial_entry.record.TypeVal = TYPEVAL_DIRETORIO;
+        initial_entry.record.bytesFileSize = CLUSTER_SIZE;
+        initial_entry.record.clustersFileSize = 1;
+        initial_entry.record.firstCluster = superblock.RootDirCluster;
+        
+        // Le o primeiro componente
+        name = strtok(NULL, "/");
+    }
+    else {
+        // Caminho relativo
+        resolve_path(current_dir, &initial_entry);
+        current_entry = &initial_entry;
+    }
+
+    while (name) {
+        if (search_entry(name, current_entry, entry) < 0) return -1;
+
+        name = strtok(NULL, "/");
+        if (name == NULL) return 0;
+
+        if (is_link(entry)) {
+            if (resolve_link(entry, entry) < 0) return -1;
+        }
+
+        if (!is_dir(entry)) return -1;
+
+        current_entry = entry;
+    }
+
     return 0;
 }
 
@@ -436,7 +494,7 @@ int resolve(char *path, struct directory_entry *entry) {
 
     if(is_link(entry)) {
         struct directory_entry resolved;
-        if(resolve_link((const struct directory_entry *) entry, &resolved) < 0) return -1;
+        if(resolve_link((struct directory_entry *) entry, &resolved) < 0) return -1;
         *(entry) = resolved;
     }
 
@@ -586,7 +644,7 @@ int get_file(char *filename, struct fcb *file) {
 }
 
 
-int create_fcb(struct directory_entry *entry, struct fcb *file) {
+int create_fcb(const struct directory_entry *entry, struct fcb *file) {
     file->dir_entry = *entry;
     file->current_physical_cluster = entry->record.firstCluster;
     file->current_sector_on_cluster = 0;
@@ -655,6 +713,31 @@ int remove_entry(struct directory_entry *entry) {
 
     memcpy((buffer + entry->byte_on_sector), &invalid, sizeof(struct t2fs_record));
     if(write_sector(entry->sector, buffer) < 0) return -1;
+
+    return 0;
+}
+
+
+int search_entry(char *name, struct directory_entry *dir_entry, struct directory_entry *entry) {
+    int num_entries = CLUSTER_SIZE / sizeof(struct t2fs_record);
+    struct t2fs_record entries[num_entries];
+    struct fcb dir_file;
+
+    create_fcb(dir_entry, &dir_file);
+
+    read_file(&dir_file, (char *) entries, CLUSTER_SIZE);
+
+    int i;
+    for (i = 0; i < num_entries; i++) {
+        if (strcmp(entries[i].name, name) == 0) break;
+    }
+    if (i == num_entries) return -1;
+
+    entry->record = entries[i];
+
+    entry->sector = superblock.DataSectorStart + (dir_entry->record.firstCluster * superblock.SectorsPerCluster) + (i * sizeof(struct t2fs_record)) / SECTOR_SIZE;
+
+    entry->byte_on_sector = (i * sizeof(struct t2fs_record)) % SECTOR_SIZE;
 
     return 0;
 }
