@@ -332,7 +332,8 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry) {
     char *buffer = (char *) malloc(sizeof(struct t2fs_record));
     if(!buffer) return -1;
 
-    if(read_file(&file, buffer, sizeof(struct t2fs_record)) < 0) return -1;
+    int size = sizeof(struct t2fs_record);
+    if(read_file(&file, buffer, size) < size) return -1;
 
     struct t2fs_record record;
 
