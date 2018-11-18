@@ -36,7 +36,7 @@ FILE2 create2 (char *filename) {
 
     if(exists(filename) == 1) {
         i = open2(filename);
-        if(is_handle_valid(i) < 0) return -1;
+        if(!is_handle_valid(i)) return -1;
 
         truncate2(i);
         return i;
@@ -57,9 +57,8 @@ int delete2 (char *filename) {
     }
 
     struct directory_entry dir_entry;
-
     if(resolve_path(filename, &dir_entry, NULL, 0) < 0) return -1;
-    if(is_file(&dir_entry) < 0 || is_link(&dir_entry) < 0) return -1;
+    if(!is_file(&dir_entry) || !is_link(&dir_entry)) return -1;
 
     return delete_file(&dir_entry);
 }
@@ -86,7 +85,7 @@ int close2 (FILE2 handle) {
         if(t2fs_init() < 0) return -1;
     }
 
-	if(is_handle_valid(handle) < 0) return -1;
+	if(!is_handle_valid(handle)) return -1;
     if(update_on_disk(&open_files[handle].dir_entry) < 0) return -1;
 
 	open_files[handle].is_valid = 0;
@@ -99,7 +98,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
         if(t2fs_init() < 0) return -1;
     }
 
-    if(is_handle_valid(handle) < 0) return -1;
+    if(!is_handle_valid(handle)) return -1;
 
     struct fcb file = open_files[handle];
     int result = read_file(&file, buffer, size);
@@ -114,7 +113,7 @@ int write2 (FILE2 handle, char *buffer, int size) {
         if(t2fs_init() < 0) return -1;
     }
 
-    if(is_handle_valid(handle) < 0) return -1;
+    if(!is_handle_valid(handle)) return -1;
 
     struct fcb file = open_files[handle];
     int result = write_file(&file, buffer, size);
@@ -129,7 +128,7 @@ int truncate2 (FILE2 handle) {
         if(t2fs_init() < 0) return -1;
     }
 
-    if(is_handle_valid(handle) < 0) return -1;
+    if(!is_handle_valid(handle)) return -1;
     struct fcb file = open_files[handle];
 
     unsigned int removed_sectors = 1;
@@ -192,7 +191,7 @@ int seek2 (FILE2 handle, DWORD offset) {
         if(t2fs_init() < 0) return -1;
     }
 
-	if (is_handle_valid(handle) < 0) return -1;
+	if (!is_handle_valid(handle)) return -1;
 
 	struct fcb file = open_files[handle];
 	if (set_current_pointer(offset, &file) < 0) return -1;
@@ -314,7 +313,7 @@ DIR2 opendir2 (char *pathname) {
 
     struct fcb file;
     if(get_file(pathname, &file) < 0) return -1;
-    if(is_dir(&file.dir_entry) < 0) return -1;
+    if(!is_dir(&file.dir_entry)) return -1;
 
     open_dirs[0] = file;
     return 0;
@@ -661,7 +660,7 @@ int write_file(struct fcb *file, char *buffer, int size) {
         if(next_sector(file) < 0) 
             file->current_byte_on_sector = SECTOR_SIZE - 1;
     }
-    
+
     return bytes_written;
 }
 
@@ -795,9 +794,9 @@ int search_entry(char *name, struct directory_entry *dir_entry, struct directory
 
 
 int is_handle_valid(int handle) {
-    if(handle < 0) return -1;
-    if(handle >= N_OPEN_FILES) return -1;
-    return 0;
+    if(handle < 0) return 0;
+    if(handle >= N_OPEN_FILES) return 0;
+    return 1;
 }
 
 
@@ -851,7 +850,7 @@ int is_linkd(const struct directory_entry *file) {
 
 
 int is_empty(const struct directory_entry *file) {
-    if(is_dir(file) < 0) return -1;
+    if(!is_dir(file)) return -1;
 
     struct t2fs_record record;
     unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
