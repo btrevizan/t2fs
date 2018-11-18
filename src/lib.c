@@ -340,6 +340,8 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry) {
     struct t2fs_record record;
     memcpy(&record, buffer, sizeof(struct t2fs_record));
 
+    if(record.TypeVal == TYPEVAL_INVALIDO) return -1;
+
     strcpy(dentry->name, record.name);
     dentry->fileType = record.TypeVal;
     dentry->fileSize = record.bytesFileSize;
@@ -754,7 +756,7 @@ int add_entry(struct directory_entry *entry, struct directory_entry *dir) {
     if(!is_dir(dir)) return -1;
 
     unsigned char buffer[SECTOR_SIZE];
-    unsigned int sector = dir->sector;
+    unsigned int sector = superblock.DataSectorStart + dir->record.firstCluster * superblock.SectorsPerCluster;
 
     struct t2fs_record aux_record;
     unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
