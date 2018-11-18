@@ -98,4 +98,4 @@ run: all
 	for exec in $(EXECUTABLES); do cp -a t2fs_disk_template.dat t2fs_disk.dat; ./$$exec; done
 
 clean:
-	rm -rf $(EXECUTABLES) teste.o t2fs_disk.dat
+	rm -rf $(EXECUTABLES) teste.o

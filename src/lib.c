@@ -284,8 +284,11 @@ int chdir2 (char *pathname) {
     }
 
     struct directory_entry entry;
-    if(resolve(pathname, &entry, current_dir, CURRENT_DIR_SIZE) < 0) return -1;
+    char resolved_path[CURRENT_DIR_SIZE];
+    if(resolve(pathname, &entry, resolved_path, CURRENT_DIR_SIZE) < 0) return -1;
     if(!is_dir(&entry)) return -1;
+
+    strcpy(current_dir, resolved_path);
 
     return 0;
 }
