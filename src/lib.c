@@ -431,6 +431,7 @@ int resolve_link(const struct directory_entry* link_entry, struct directory_entr
 
 int resolve_path(char* path, struct directory_entry* resolved_entry, char *resolved_path, int size) {
     struct directory_entry *entry = resolved_entry;
+    char *path_copy;
     char *name;
     struct directory_entry *current_entry;
     struct directory_entry initial_entry;
@@ -439,26 +440,27 @@ int resolve_path(char* path, struct directory_entry* resolved_entry, char *resol
     if (resolved_path != NULL) {
         resolved_path[0] = '\0';
     }
-    
-    name = strtok(path, "/");
 
-    if (strcmp(name, "") == 0) {
-        // Caminho absoluto começando com /
+    if (path[0] == '/') {
+        // Caminho absoluto
 
         // Cria uma entry correspondente à raiz
         initial_entry.record.TypeVal = TYPEVAL_DIRETORIO;
         initial_entry.record.bytesFileSize = CLUSTER_SIZE;
         initial_entry.record.clustersFileSize = 1;
         initial_entry.record.firstCluster = superblock.RootDirCluster;
-        
-        // Le o primeiro componente
-        name = strtok(NULL, "/");
     }
     else {
         // Caminho relativo
         resolve_path(current_dir, &initial_entry, resolved_path, size);
         current_entry = &initial_entry;
     }
+
+    path_copy = malloc(strlen(path) + 1);
+    strcpy(path_copy, path);
+    path = path_copy;
+
+    name = strtok(path, "/");
 
     while (name) {
         if (search_entry(name, current_entry, entry) < 0) return -1;
@@ -511,7 +513,7 @@ int load_fat() {
     if(!fat) return -1;
 
     while(fat_n_sectors > 0) {
-        if(read_sector(sector, (unsigned char *)(fat + (SECTOR_SIZE * i))) < 0) return -1;
+        if(read_sector(sector, (unsigned char *) fat + (SECTOR_SIZE * i)) < 0) return -1;
 
         i++;
         sector++;

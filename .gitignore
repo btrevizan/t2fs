@@ -62,3 +62,4 @@ CMakeLists.txt
 /exemplo/*
 !/exemplo/*.c
 /teste/test_template.c
+teste.c
