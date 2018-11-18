@@ -134,6 +134,8 @@ int truncate2 (FILE2 handle) {
     }
 
     if(!is_handle_valid(handle)) return -1;
+    if(open_files[handle].is_valid != 1) return -1;
+    
     struct fcb file = open_files[handle];
 
     unsigned int removed_sectors = 1;
