@@ -6,11 +6,13 @@
 #include "../include/helpers.h"
 #include "../include/apidisk.h"
 
+#define CURRENT_DIR_SIZE 1024
+
 static char first_run = 1;
 static struct t2fs_superbloco superblock;
 static struct fcb open_files[N_OPEN_FILES];
 static struct fcb open_dirs[1];
-static char *current_dir;
+static char current_dir[CURRENT_DIR_SIZE];
 static unsigned int *fat;
 static unsigned int CLUSTER_SIZE;
 
@@ -56,7 +58,7 @@ int delete2 (char *filename) {
 
     struct directory_entry dir_entry;
 
-    if(resolve_path(filename, &dir_entry) < 0) return -1;
+    if(resolve_path(filename, &dir_entry, NULL, 0) < 0) return -1;
     if(is_file(&dir_entry) < 0 || is_link(&dir_entry) < 0) return -1;
 
     return delete_file(&dir_entry);
@@ -247,7 +249,7 @@ int mkdir2 (char *pathname) {
     char *parent_pathname = (char *) malloc(strlen(pathname) + strlen("/.."));
     get_parent_filepath(pathname, parent_pathname);
 
-    if(resolve_path(parent_pathname, &entry) < 0) return -1;
+    if(resolve_path(parent_pathname, &entry, NULL, 0) < 0) return -1;
 
     parent.record.TypeVal = TYPEVAL_DIRETORIO;
     strcpy(parent.record.name, "..");
@@ -267,7 +269,7 @@ int rmdir2 (char *pathname) {
 
     struct directory_entry entry;
 
-    if(resolve_path(pathname, &entry) < 0) return -1;
+    if(resolve_path(pathname, &entry, NULL, 0) < 0) return -1;
     if(!is_dir(&entry)) return -1;
     if(!is_empty(&entry)) return -1;
     if(is_linkf(&entry)) return -1;
@@ -282,16 +284,9 @@ int chdir2 (char *pathname) {
     }
 
     struct directory_entry entry;
-    if(resolve(pathname, &entry) < 0) return -1;
+    if(resolve(pathname, &entry, current_dir, CURRENT_DIR_SIZE) < 0) return -1;
     if(!is_dir(&entry)) return -1;
 
-    free(current_dir);
-
-    current_dir = (char *) malloc(strlen(pathname));
-    if(!current_dir) return -1;
-
-    // TODO: resolve path
-    strcpy(current_dir, pathname);
     return 0;
 }
 
@@ -388,8 +383,6 @@ int t2fs_init() {
     if(load_fat() < 0) return -1;
 
     // Set current directory
-    current_dir = (char *) malloc(sizeof(char) * 2);
-    if(!current_dir) return -1;
     strcpy(current_dir, "/");
 
     // Define CLUSTER_SIZE
@@ -418,14 +411,16 @@ int update_on_disk(struct directory_entry* entry) {
 }
 
 
-int resolve_link(const struct directory_entry* link_entry, struct directory_entry* resolved_entry) {
+int resolve_link(const struct directory_entry* link_entry, struct directory_entry* resolved_entry, char *resolved_path, int size) {
     char path[CLUSTER_SIZE];
     struct fcb file;
 
     while (1) {
         create_fcb(link_entry, &file);
         read_file(&file, path, CLUSTER_SIZE);
-        if (resolve_path(path, resolved_entry) < 0) return -1;
+        if (resolve_path(path, resolved_entry, resolved_path, size) < 0) {
+            return -1;
+        }
         if (!is_link(resolved_entry)) break;
         link_entry = resolved_entry;
     }
@@ -434,10 +429,16 @@ int resolve_link(const struct directory_entry* link_entry, struct directory_entr
 }
 
 
-int resolve_path(char* path, struct directory_entry* entry) {
+int resolve_path(char* path, struct directory_entry* resolved_entry, char *resolved_path, int size) {
+    struct directory_entry *entry = resolved_entry;
     char *name;
     struct directory_entry *current_entry;
     struct directory_entry initial_entry;
+    int i;
+
+    if (resolved_path != NULL) {
+        resolved_path[0] = '\0';
+    }
     
     name = strtok(path, "/");
 
@@ -455,18 +456,34 @@ int resolve_path(char* path, struct directory_entry* entry) {
     }
     else {
         // Caminho relativo
-        resolve_path(current_dir, &initial_entry);
+        resolve_path(current_dir, &initial_entry, resolved_path, size);
         current_entry = &initial_entry;
     }
 
     while (name) {
         if (search_entry(name, current_entry, entry) < 0) return -1;
 
+        if (resolved_path != NULL) {
+            i = strlen(resolved_path);
+
+            if (strcmp(name, "..") == 0) {
+                // Remove o último componente
+                while (resolved_path[i] != '/') i--;
+                resolved_path[i] = '\0';
+            }
+            else if (strcmp(name, ".") != 0) {
+                if (i + strlen(name) + 2 > size) return -1;
+
+                strcat(resolved_path, "/");
+                strcat(resolved_path, name);
+            }
+        }
+
         name = strtok(NULL, "/");
         if (name == NULL) return 0;
 
         if (is_link(entry)) {
-            if (resolve_link(entry, entry) < 0) return -1;
+            if (resolve_link(entry, entry, resolved_path, size) < 0) return -1;
         }
 
         if (!is_dir(entry)) return -1;
@@ -517,13 +534,13 @@ int fat_bytes_size() {
 }
 
 
-int resolve(char *path, struct directory_entry *entry) {
-    if(resolve_path(path, entry) < 0) return -1;
+int resolve(char *path, struct directory_entry *entry, char *resolved_path, int size) {
+    if(resolve_path(path, entry, resolved_path, size) < 0) return -1;
 
     if(is_link(entry)) {
-        struct directory_entry resolved;
-        if(resolve_link((struct directory_entry *) entry, &resolved) < 0) return -1;
-        *(entry) = resolved;
+        struct directory_entry resolved_entry;
+        if(resolve_link((struct directory_entry *) entry, &resolved_entry, resolved_path, size) < 0) return -1;
+        *(entry) = resolved_entry;
     }
 
     return 0;
@@ -532,7 +549,7 @@ int resolve(char *path, struct directory_entry *entry) {
 
 int create_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
-    if(resolve_path(filename, &entry) < 0) return -1;
+    if(resolve_path(filename, &entry, NULL, 0) < 0) return -1;
     if(exists(filename)) return -1;
 
     unsigned int cluster = alloc_cluster();
@@ -667,7 +684,7 @@ int delete_file(struct directory_entry *entry) {
 
 int get_file(char *filename, struct fcb *file) {
     struct directory_entry entry;
-    if(resolve(filename, &entry) < 0) return -1;
+    if(resolve(filename, &entry, NULL, 0) < 0) return -1;
     return create_fcb(&entry, file);
 }
 
@@ -817,7 +834,7 @@ int is_linkf(const struct directory_entry *file) {
     if(!is_link(file)) return -1;
 
     struct directory_entry entry;
-    if(resolve_link(file, &entry) < 0) return -1;
+    if(resolve_link(file, &entry, NULL, 0) < 0) return -1;
     return is_file(&entry);
 }
 
@@ -826,7 +843,7 @@ int is_linkd(const struct directory_entry *file) {
     if(!is_link(file)) return -1;
 
     struct directory_entry entry;
-    if(resolve_link(file, &entry) < 0) return -1;
+    if(resolve_link(file, &entry, NULL, 0) < 0) return -1;
     return is_dir(&entry);
 }
 
@@ -857,7 +874,7 @@ int is_empty(const struct directory_entry *file) {
 
 int exists(char *filepath) {
     struct directory_entry entry;
-    if(resolve_path(filepath, &entry) == 0) return 1;
+    if(resolve_path(filepath, &entry, NULL, 0) == 0) return 1;
     return 0;
 }
 

@@ -34,9 +34,9 @@ int fat_bytes_size();
 
 int update_on_disk(struct directory_entry *entry);
 
-int resolve_link(const struct directory_entry *link_entry, struct directory_entry *resolved_entry);
-int resolve_path(char *path, struct directory_entry *entry);
-int resolve(char *path, struct directory_entry *entry);
+int resolve_link(const struct directory_entry *link_entry, struct directory_entry *resolved_entry, char *resolved_path, int size);
+int resolve_path(char *path, struct directory_entry *resolved_entry, char *resolved_path, int size);
+int resolve(char *path, struct directory_entry *entry, char *resolved_path, int size);
 
 int create_file(char *filename, struct fcb *file);
 int read_file(struct fcb *file, char *buffer, int size);
