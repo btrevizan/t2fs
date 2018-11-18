@@ -282,12 +282,8 @@ int chdir2 (char *pathname) {
     }
 
     struct directory_entry entry;
-    if(resolve_path(pathname, &entry) < 0) return -1;
-
-    if(entry.record.TypeVal == TYPEVAL_LINK) {
-        struct directory_entry resolved;
-        if(resolve_link(&entry, &resolved) < 0) return -1;
-    }
+    if(resolve(pathname, &entry) < 0) return -1;
+    if(!is_dir(&entry)) return -1;
 
     free(current_dir);
 
@@ -902,7 +898,7 @@ int prev_cluster(struct fcb *file) {
     file->current_physical_cluster = last_cluster_visited;
     file->current_sector_on_cluster = 0;
     file->current_byte_on_sector = 0;
-    
+
     return 0;
 }
 
