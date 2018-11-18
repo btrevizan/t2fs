@@ -334,18 +334,18 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry) {
 
     char *buffer = (char *) malloc(sizeof(struct t2fs_record));
     if(!buffer) return -1;
-
+    
     int size = sizeof(struct t2fs_record);
     if(read_file(&file, buffer, size) < size) return -1;
-
+    
     struct t2fs_record record;
-
     memcpy(&record, buffer, sizeof(struct t2fs_record));
 
     strcpy(dentry->name, record.name);
     dentry->fileType = record.TypeVal;
     dentry->fileSize = record.bytesFileSize;
 
+    open_dirs[handle] = file;
     return 0;
 }
 
@@ -596,12 +596,8 @@ int read_file(struct fcb *file, char *buffer, int size) {
 
     // Read the rest, sector by sector
     while(bytes_read < size) {
-        if(next_sector(file) < 0) { // EOF
-            n = get_last_byte(file->dir_entry.record.bytesFileSize);
-            strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
-            bytes_read += n;
+        if(next_sector(file) < 0) // EOF
             break;
-        }
 
         sector = get_current_physical_sector(file);
         if(read_sector(sector, aux_buffer) < 0) break;
@@ -615,7 +611,12 @@ int read_file(struct fcb *file, char *buffer, int size) {
         if(n != SECTOR_SIZE) break;
     }
 
-    file->current_byte_on_sector = n % SECTOR_SIZE;
+    file->current_byte_on_sector += n % SECTOR_SIZE;
+    if(file->current_byte_on_sector % SECTOR_SIZE == 0) {
+        if(next_sector(file) < 0) 
+            file->current_byte_on_sector = SECTOR_SIZE - 1;
+    }
+
     strncpy(file->current_sector_data, (const char *)aux_buffer, n);
     file->num_bytes_read = n;
 
@@ -658,7 +659,12 @@ int write_file(struct fcb *file, char *buffer, int size) {
         }
     }
 
-    file->current_byte_on_sector = n % SECTOR_SIZE;
+    file->current_byte_on_sector += n % SECTOR_SIZE;
+    if(file->current_byte_on_sector % SECTOR_SIZE == 0) {
+        if(next_sector(file) < 0) 
+            file->current_byte_on_sector = SECTOR_SIZE - 1;
+    }
+    
     return bytes_written;
 }
 
@@ -886,6 +892,7 @@ int next_sector(struct fcb *file) {
         if(next_cluster(file) < 0) return -1; // EOF
 
     file->current_sector_on_cluster = sector;
+    file->current_byte_on_sector = 0;
     return 0;
 }
 
