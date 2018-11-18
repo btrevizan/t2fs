@@ -656,7 +656,12 @@ int write_file(struct fcb *file, char *buffer, int size) {
         }
     }
 
-    file->current_byte_on_sector = n % SECTOR_SIZE;
+    file->current_byte_on_sector += n % SECTOR_SIZE;
+    if(file->current_byte_on_sector % SECTOR_SIZE == 0) {
+        if(next_sector(file) < 0) 
+            file->current_byte_on_sector = SECTOR_SIZE - 1;
+    }
+    
     return bytes_written;
 }
 
