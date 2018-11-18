@@ -430,11 +430,8 @@ int resolve_link(const struct directory_entry* link_entry, struct directory_entr
 
 
 int resolve_path(char* path, struct directory_entry* resolved_entry, char *resolved_path, int size) {
-    struct directory_entry *entry = resolved_entry;
     char *path_copy;
     char *name;
-    struct directory_entry *current_entry;
-    struct directory_entry initial_entry;
     int i;
 
     if (resolved_path != NULL) {
@@ -443,17 +440,15 @@ int resolve_path(char* path, struct directory_entry* resolved_entry, char *resol
 
     if (path[0] == '/') {
         // Caminho absoluto
-
         // Cria uma entry correspondente à raiz
-        initial_entry.record.TypeVal = TYPEVAL_DIRETORIO;
-        initial_entry.record.bytesFileSize = CLUSTER_SIZE;
-        initial_entry.record.clustersFileSize = 1;
-        initial_entry.record.firstCluster = superblock.RootDirCluster;
+        resolved_entry->record.TypeVal = TYPEVAL_DIRETORIO;
+        resolved_entry->record.bytesFileSize = CLUSTER_SIZE;
+        resolved_entry->record.clustersFileSize = 1;
+        resolved_entry->record.firstCluster = superblock.RootDirCluster;
     }
     else {
         // Caminho relativo
-        resolve_path(current_dir, &initial_entry, resolved_path, size);
-        current_entry = &initial_entry;
+        resolve_path(current_dir, resolved_entry, resolved_path, size);
     }
 
     path_copy = malloc(strlen(path) + 1);
@@ -463,7 +458,7 @@ int resolve_path(char* path, struct directory_entry* resolved_entry, char *resol
     name = strtok(path, "/");
 
     while (name) {
-        if (search_entry(name, current_entry, entry) < 0) return -1;
+        if (search_entry(name, resolved_entry, resolved_entry) < 0) return -1;
 
         if (resolved_path != NULL) {
             i = strlen(resolved_path);
@@ -484,13 +479,11 @@ int resolve_path(char* path, struct directory_entry* resolved_entry, char *resol
         name = strtok(NULL, "/");
         if (name == NULL) return 0;
 
-        if (is_link(entry)) {
-            if (resolve_link(entry, entry, resolved_path, size) < 0) return -1;
+        if (is_link(resolved_entry)) {
+            if (resolve_link(resolved_entry, resolved_entry, resolved_path, size) < 0) return -1;
         }
 
-        if (!is_dir(entry)) return -1;
-
-        current_entry = entry;
+        if (!is_dir(resolved_entry)) return -1;
     }
 
     return 0;
