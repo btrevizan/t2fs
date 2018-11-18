@@ -231,14 +231,14 @@ int mkdir2 (char *pathname) {
         write_sector(sector + i, records);
 
     // Create the current and parent entries
-    struct t2fs_record current;
-    struct t2fs_record parent;
+    struct directory_entry current;
+    struct directory_entry parent;
 
-    current.TypeVal = TYPEVAL_DIRETORIO;
-    strcpy(current.name, ".");
-    current.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
-    current.clustersFileSize = 1;
-    current.firstCluster = cluster;
+    current.record.TypeVal = TYPEVAL_DIRETORIO;
+    strcpy(current.record.name, ".");
+    current.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+    current.record.clustersFileSize = 1;
+    current.record.firstCluster = cluster;
 
     add_entry(&current, &file.dir_entry);
 
@@ -249,11 +249,11 @@ int mkdir2 (char *pathname) {
 
     if(resolve_path(parent_pathname, &entry) < 0) return -1;
 
-    parent.TypeVal = TYPEVAL_DIRETORIO;
-    strcpy(parent.name, "..");
-    parent.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
-    parent.clustersFileSize = 1;
-    parent.firstCluster = entry.record.firstCluster;
+    parent.record.TypeVal = TYPEVAL_DIRETORIO;
+    strcpy(parent.record.name, "..");
+    parent.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+    parent.record.clustersFileSize = 1;
+    parent.record.firstCluster = entry.record.firstCluster;
 
     add_entry(&parent, &file.dir_entry);
     return 0;
@@ -290,6 +290,7 @@ int chdir2 (char *pathname) {
     current_dir = (char *) malloc(strlen(pathname));
     if(!current_dir) return -1;
 
+    // TODO: resolve path
     strcpy(current_dir, pathname);
     return 0;
 }
@@ -550,7 +551,7 @@ int create_file(char *filename, struct fcb *file) {
     get_parent_filepath(filename, parent_pathname);
 
     if(get_file(parent_pathname, &parent) < 0) return -1;
-    if(add_entry(&file->dir_entry.record, &parent.dir_entry) < 0) return -1;
+    if(add_entry(&file->dir_entry, &parent.dir_entry) < 0) return -1;
 
     file->is_valid = 1;
     file->current_physical_cluster = cluster;
@@ -702,7 +703,7 @@ int get_parent_filepath(char *filepath, char *parent_pathname) {
 }
 
 
-int add_entry(struct t2fs_record *record, struct directory_entry *dir) {
+int add_entry(struct directory_entry *entry, struct directory_entry *dir) {
     if(!is_dir(dir)) return -1;
 
     unsigned char buffer[SECTOR_SIZE];
@@ -719,7 +720,11 @@ int add_entry(struct t2fs_record *record, struct directory_entry *dir) {
                 memcpy(&aux_record, (buffer + j * record_size), record_size);
 
                 if(aux_record.TypeVal == TYPEVAL_INVALIDO) {
-                    memcpy((buffer + j * record_size), record, record_size);
+                    memcpy((buffer + j * record_size), &entry->record, record_size);
+
+                    entry->sector = sector + i;
+                    entry->byte_on_sector = j * record_size;
+
                     if(write_sector(sector + i, buffer) < 0) return -1;
                     return 0;
                 }

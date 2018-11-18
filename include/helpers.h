@@ -47,7 +47,7 @@ int create_fcb(const struct directory_entry *entry, struct fcb *file);
 int get_file_name(char *filepath, char *filename);
 int get_parent_filepath(char *filepath, char *parent_filepath);
 
-int add_entry(struct t2fs_record *record, struct directory_entry *dir);
+int add_entry(struct directory_entry *entry, struct directory_entry *dir);
 int remove_entry(struct directory_entry *entry);
 int search_entry(char *name, struct directory_entry *dir_entry, struct directory_entry *entry);
 
