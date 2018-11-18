@@ -899,6 +899,10 @@ int prev_cluster(struct fcb *file) {
         next_cluster(file);
     }
 
+    file->current_physical_cluster = last_cluster_visited;
+    file->current_sector_on_cluster = 0;
+    file->current_byte_on_sector = 0;
+    
     return 0;
 }
 
