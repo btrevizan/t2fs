@@ -76,8 +76,9 @@ FILE2 open2 (char *filename) {
 
 
 int close2 (FILE2 handle) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
 	if(is_handle_valid(handle) < 0) return -1;
     if(update_on_disk(&open_files[handle].dir_entry) < 0) return -1;
@@ -178,8 +179,9 @@ int truncate2 (FILE2 handle) {
 
 
 int seek2 (FILE2 handle, DWORD offset) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
 	if (is_handle_valid(handle) < 0) return -1;
 
@@ -340,8 +342,9 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry) {
 
 
 int closedir2 (DIR2 handle) {
-    if(first_run == 1)
+    if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
+    }
 
 	if (handle != 0) return -1;
 
