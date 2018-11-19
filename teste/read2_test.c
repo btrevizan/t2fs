@@ -7,9 +7,10 @@
 int main() {
   start_test("read2");
 
-  char buffer[8];
+  char buffer[60];
+  int ret_code;
 
-  int ret_code = read2(0, buffer, 8);
+  ret_code = read2(0, buffer, 8);
   assert("Se o handle nao foi aberto, retorna um erro", ret_code < 0);
 
   FILE2 handle = open2("file1.txt");

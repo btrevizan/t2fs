@@ -604,14 +604,17 @@ int read_file(struct fcb *file, char *buffer, int size) {
     if(read_sector(sector, aux_buffer) < 0) return 0;
 
     unsigned int n = SECTOR_SIZE - file->current_byte_on_sector;
-
     if(n > size) n = size;
+    if(n > file->dir_entry.record.bytesFileSize) {
+        n = file->dir_entry.record.bytesFileSize - (file->current_sector_on_cluster * SECTOR_SIZE + file->current_byte_on_sector);
+        size = n;
+    }
 
     unsigned int bytes_read = n;
     memcpy(buffer, (const char *)(aux_buffer + file->current_byte_on_sector), n);
 
     // Read the rest, sector by sector
-    while(bytes_read < size) {
+    while(bytes_read < size && bytes_read < file->dir_entry.record.bytesFileSize) {
         if(next_sector(file) < 0) // EOF
             break;
 
@@ -620,6 +623,7 @@ int read_file(struct fcb *file, char *buffer, int size) {
 
         n = SECTOR_SIZE;
         if(bytes_read + n > size) n = size - bytes_read;
+        if(bytes_read + n > file->dir_entry.record.bytesFileSize) n = file->dir_entry.record.bytesFileSize - bytes_read;
 
         memcpy((buffer + bytes_read), (const char *)aux_buffer, n);
         bytes_read += n;
