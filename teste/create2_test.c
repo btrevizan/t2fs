@@ -12,8 +12,6 @@ int main() {
     handle = create2("dir1");
     assert("Deve retornar um erro se o filename referencia um diretorio", 
            handle < 0);
-    
-
 
     handle = create2("dir_link");
     assert("Deve retornar um erro se o filename referencia um link para "
@@ -89,6 +87,7 @@ int main() {
 
     int found_link = 0;
     int found_file = 0;
+
     while (readdir2(dir_handle, &dir_entry) == 0) {
 
       if (strcmp(dir_entry.name, "broken_link") == 0 
