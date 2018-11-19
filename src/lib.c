@@ -325,14 +325,12 @@ DIR2 opendir2 (char *pathname) {
 
     DIR2 handle = 0;
 
-    if(open_dirs[handle].is_valid == 1) return -1;
-
     struct fcb file;
     if(get_file(pathname, &file) < 0) return -1;
     if(!is_dir(&file.dir_entry)) return -1;
 
-    open_dirs[0] = file;
-    return 0;
+    open_dirs[handle] = file;
+    return handle;
 }
 
 
