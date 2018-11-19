@@ -9,15 +9,13 @@ int main() {
 
     start_test("create2");
 
-    mkdir2("dir");
-    handle = create2("dir");
+    handle = create2("dir1");
     assert("Deve retornar um erro se o filename referencia um diretorio", 
            handle < 0);
-    
 
-
-    ln2("dir_link", "dir");
-    handle = create2("dir_link");
+    mkdir2("dir1/dir11");
+    ln2("dir1/dir11/dir_link", "dir1");
+    handle = create2("dir1/dir11/dir_link");
     assert("Deve retornar um erro se o filename referencia um link para "
            "diretorio", handle < 0);
     
@@ -84,7 +82,7 @@ int main() {
 
 
     close2(handle);
-    ln2("link", "file.txt");
+    ln2("link", "file1.txt");
     handle = create2("link");
     close2(handle);
 
@@ -93,13 +91,14 @@ int main() {
 
     int found_link = 0;
     int found_file = 0;
+
     while (readdir2(dir_handle, &dir_entry) == 0) {
 
       if (strcmp(dir_entry.name, "link") == 0 
           && dir_entry.fileType == TYPEVAL_LINK) {
         found_link = 1;
       }
-      else if (strcmp(dir_entry.name, "file.txt") == 0 
+      else if (strcmp(dir_entry.name, "file1.txt") == 0 
                && dir_entry.fileType == TYPEVAL_REGULAR) {
         found_file = 1;
       }

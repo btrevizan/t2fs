@@ -34,23 +34,23 @@ FILE2 create2 (char *filename) {
     int i = get_free_handle();
     if(i < 0) return -1; // N_FILES_OPEN opened
 
-    if(exists(filename) == 1) {
-        i = open2(filename);
+    struct fcb file;
+    int j = open2(filename);
+    if(is_handle_valid(j)) {
+        i = j;
+        file = open_files[i];
 
-        if(!is_handle_valid(i)) return -1;
-        if(is_dir(&open_files[i].dir_entry)) return -1;
-        if(is_linkd(&open_files[i].dir_entry)) return -1;
+        if(is_dir(&file.dir_entry)) return -1;
+        if(is_linkd(&file.dir_entry)) return -1;
 
         truncate2(i);
-        return i;
+    } else {
+        file.dir_entry.record.TypeVal = TYPEVAL_REGULAR;
+        file.dir_entry.record.bytesFileSize = 0;
+        file.dir_entry.record.clustersFileSize = 1;
+
+        if(create_file(filename, &file) < 0) return -1;
     }
-
-    struct fcb file;
-    file.dir_entry.record.TypeVal = TYPEVAL_REGULAR;
-    file.dir_entry.record.bytesFileSize = 0;
-    file.dir_entry.record.clustersFileSize = 1;
-
-    if(create_file(filename, &file) < 0) return -1;
 
     open_files[i] = file;
     return i;
@@ -169,9 +169,9 @@ int truncate2 (FILE2 handle) {
     file.current_sector_on_cluster = curr_sector - 1;
     file.current_byte_on_sector = SECTOR_SIZE - 1;
 
-    if(file.current_byte_on_sector == 0) {
-        if(file.current_sector_on_cluster == 0) {
-            if(file.current_physical_cluster == file.dir_entry.record.firstCluster) {
+    if(curr_byte == 0) {
+        if(curr_sector == 0) {
+            if(curr_cluster == file.dir_entry.record.firstCluster) {
                 // Pointer is in the beginning of the file
                 file.dir_entry.record.bytesFileSize = 0;
                 file.dir_entry.record.clustersFileSize = 1;
@@ -737,33 +737,28 @@ int get_file_name(char *filepath, char *filename) {
 
 int get_parent_filepath(char *filepath, char *parent_pathname) {
     char aux1[strlen(filepath)];
-    char aux2[strlen(filepath)];
+    char prev[strlen(filepath)];
     strcpy(aux1, filepath);
 
     if(aux1[0] == '/')
         strcpy(parent_pathname, "/");
+    else
+        strcpy(parent_pathname, "");
 
     char *dir = strtok(aux1, "/");
     if(strcmp(dir, filepath) == 0) {
-        strcpy(parent_pathname, current_dir);
+        strcat(parent_pathname, current_dir);
         return 0;
     }
     
-    parent_pathname[0] = '\0';
-
-    char *next = strtok(aux2, "/");
-    next = strtok(NULL, "/");
-
-    while(next) {
+    do {
+        strcpy(prev, dir);
         strcat(parent_pathname, dir);
         strcat(parent_pathname, "/");
-
         dir = strtok(NULL, "/");
-        next = strtok(NULL, "/");
-    } 
+    } while(dir);
 
-    parent_pathname[strlen(parent_pathname) - 1] = '\0';
-
+    parent_pathname[strlen(parent_pathname) - (strlen(prev) + 1) - 1] = '\0';
     return 0;
 }
 
@@ -879,25 +874,25 @@ int is_link(const struct directory_entry *file) {
 
 
 int is_linkf(const struct directory_entry *file) {
-    if(!is_link(file)) return -1;
+    if(!is_link(file)) return 0;
 
     struct directory_entry entry;
-    if(resolve_link(file, &entry, NULL, 0) < 0) return -1;
+    if(resolve_link(file, &entry, NULL, 0) < 0) return 0;
     return is_file(&entry);
 }
 
 
 int is_linkd(const struct directory_entry *file) {
-    if(!is_link(file)) return -1;
+    if(!is_link(file)) return 0;
 
     struct directory_entry entry;
-    if(resolve_link(file, &entry, NULL, 0) < 0) return -1;
+    if(resolve_link(file, &entry, NULL, 0) < 0) return 0;
     return is_dir(&entry);
 }
 
 
 int is_empty(const struct directory_entry *file) {
-    if(!is_dir(file)) return -1;
+    if(!is_dir(file)) return 0;
 
     struct t2fs_record record;
     unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
