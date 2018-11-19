@@ -585,8 +585,10 @@ int load_fat() {
 
 
 int save_fat(unsigned int cluster) {
-    unsigned int sector = superblock.pFATSectorStart + (cluster / (SECTOR_SIZE / 4));
-    if(write_sector(sector, (unsigned char *)(fat + sector * SECTOR_SIZE)) < 0) return -1;
+    unsigned int sector_on_fat = (cluster / (SECTOR_SIZE / 4));
+    unsigned int sector = superblock.pFATSectorStart + sector_on_fat;
+
+    if(write_sector(sector, ((unsigned char *) fat) + sector_on_fat * SECTOR_SIZE ) < 0) return -1;
     return 0;
 }
 
