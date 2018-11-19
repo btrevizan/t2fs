@@ -57,7 +57,7 @@ int main() {
   read2(handle[0], buffer, 8);
   assert("Se o filename referencia um link para um arquivo regular, o "
          "arquivo apontado pelo link deve ser aberto", 
-         strcmp(buffer, "conteudo") == 0);
+         strcmp(buffer, "Esse eh ") == 0);
   
   close2(handle[0]);
   
