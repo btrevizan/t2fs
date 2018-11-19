@@ -81,7 +81,7 @@ FILE2 open2 (char *filename) {
     struct fcb file;
     if(get_file(filename, &file) < 0) return -1;
     if(is_dir(&file.dir_entry)) return -1;
-
+    
     open_files[i] = file;
     return i;
 }
@@ -93,7 +93,7 @@ int close2 (FILE2 handle) {
     }
 
 	if(!is_handle_valid(handle)) return -1;
-    if(update_on_disk(&open_files[handle].dir_entry) < 0) return -1;
+    //if(update_on_disk(&open_files[handle].dir_entry) < 0) return -1;
 
 	open_files[handle].is_valid = 0;
 	return 0;
@@ -425,7 +425,6 @@ int update_on_disk(struct directory_entry* entry) {
     entries[entry_on_sector] = entry->record;
 
     if (write_sector(entry->sector, (unsigned char *) entries) < 0) return -1;
-
     return 0;
 }
 
@@ -640,6 +639,7 @@ int read_file(struct fcb *file, char *buffer, int size) {
     memcpy(file->current_sector_data, (const char *)aux_buffer, n);
     file->num_bytes_read = n;
 
+    *(buffer + bytes_read) = '\0';
     return bytes_read;
 }
 
@@ -691,7 +691,7 @@ int write_file(struct fcb *file, char *buffer, int size) {
     unsigned int bytes_added = (curr_sector * SECTOR_SIZE + curr_byte) + bytes_written - file->dir_entry.record.bytesFileSize;
     if(bytes_added > 0) file->dir_entry.record.bytesFileSize += bytes_added;
 
-    update_on_disk(&file->dir_entry);
+    if(update_on_disk(&file->dir_entry) < 0) return 0;
     return bytes_written;
 }
 
@@ -830,7 +830,7 @@ int search_entry(char *name, struct directory_entry *dir_entry, struct directory
 
     create_fcb(dir_entry, &dir_file);
 
-    read_file(&dir_file, (char *) entries, CLUSTER_SIZE);
+    if(read_file(&dir_file, (char *) entries, CLUSTER_SIZE) <= 0) return -1;
 
     int i;
     for (i = 0; i < num_entries; i++) {
@@ -839,9 +839,7 @@ int search_entry(char *name, struct directory_entry *dir_entry, struct directory
     if (i == num_entries) return -1;
 
     entry->sector = superblock.DataSectorStart + (dir_entry->record.firstCluster * superblock.SectorsPerCluster) + (i * sizeof(struct t2fs_record)) / SECTOR_SIZE;
-
     entry->byte_on_sector = (i * sizeof(struct t2fs_record)) % SECTOR_SIZE;
-
     entry->record = entries[i];
 
     return 0;
