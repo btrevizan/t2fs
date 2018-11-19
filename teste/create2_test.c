@@ -13,9 +13,7 @@ int main() {
     assert("Deve retornar um erro se o filename referencia um diretorio", 
            handle < 0);
 
-    mkdir2("dir1/dir11");
-    ln2("dir1/dir11/dir_link", "dir1");
-    handle = create2("dir1/dir11/dir_link");
+    handle = create2("dir_link");
     assert("Deve retornar um erro se o filename referencia um link para "
            "diretorio", handle < 0);
     
@@ -55,7 +53,6 @@ int main() {
     write2(handle, "conteudo", 8);
     close2(handle);
     handle = create2(name);
-    seek2(handle, 0);
     char buffer[8];
     int bytes_read = read2(handle, buffer, 8);
 
@@ -82,8 +79,7 @@ int main() {
 
 
     close2(handle);
-    ln2("link", "file1.txt");
-    handle = create2("link");
+    handle = create2("broken_link");
     close2(handle);
 
     // Obter a entrada no diretório
@@ -94,11 +90,11 @@ int main() {
 
     while (readdir2(dir_handle, &dir_entry) == 0) {
 
-      if (strcmp(dir_entry.name, "link") == 0 
+      if (strcmp(dir_entry.name, "broken_link") == 0 
           && dir_entry.fileType == TYPEVAL_LINK) {
         found_link = 1;
       }
-      else if (strcmp(dir_entry.name, "file1.txt") == 0 
+      else if (strcmp(dir_entry.name, "nao_existo.txt") == 0 
                && dir_entry.fileType == TYPEVAL_REGULAR) {
         found_file = 1;
       }

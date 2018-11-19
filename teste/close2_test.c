@@ -7,7 +7,7 @@
 int main() {
   start_test("close2");
   
-  FILE2 handle = create2("file");
+  FILE2 handle = open2("file1.txt");
   int ret_code = close2(handle);
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 
