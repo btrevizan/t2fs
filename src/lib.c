@@ -531,7 +531,7 @@ int load_fat() {
         if(read_sector(sector, ((unsigned char *)fat) + (SECTOR_SIZE * i)) < 0) return -1;
         sector++;
     }
-    
+
     return 0;
 }
 
@@ -566,9 +566,8 @@ int create_file(char *filename, struct fcb *file) {
 
     unsigned int cluster = alloc_cluster();
     if(cluster < 0) return -1;
-
+    
     get_file_name(filename, file->dir_entry.record.name);
-
     file->dir_entry.record.firstCluster = cluster;
 
     struct fcb parent;
@@ -1001,11 +1000,12 @@ int free_cluster(DWORD cluster) {
 
 
 unsigned int alloc_cluster() {
-    unsigned int cluster = 0;
+    int cluster;
     int n_clusters = fat_bytes_size() / 4;
 
-    while(fat[cluster] != FREE_CLUSTER && fat[cluster] == BAD_CLUSTER && cluster < n_clusters)
-        cluster++;
+    for(cluster = 0; cluster < n_clusters; cluster++) {
+        if(fat[cluster] == FREE_CLUSTER) break;
+    }
 
     if(cluster == n_clusters) return -1;
 
