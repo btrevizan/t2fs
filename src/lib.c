@@ -203,7 +203,8 @@ int seek2 (FILE2 handle, DWORD offset) {
     }
 
 	if (!is_handle_valid(handle)) return -1;
-
+    if(open_files[handle].is_valid != 1) return -1;
+    
 	struct fcb file = open_files[handle];
 	if (set_current_pointer(offset, &file) < 0) return -1;
 
