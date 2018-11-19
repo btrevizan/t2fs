@@ -637,7 +637,6 @@ int read_file(struct fcb *file, char *buffer, int size) {
     memcpy(file->current_sector_data, (const char *)aux_buffer, n);
     file->num_bytes_read = n;
 
-    *(buffer + bytes_read) = '\0';
     return bytes_read;
 }
 
@@ -656,7 +655,7 @@ int write_file(struct fcb *file, char *buffer, int size) {
 
     unsigned int bytes_written = n;
 
-    strncpy((char *) (aux_buffer + file->current_byte_on_sector), (const char *)buffer, n);
+    memcpy((aux_buffer + file->current_byte_on_sector), buffer, n);
     if(write_sector(sector, aux_buffer) < 0) return -1;
 
     // Write the rest, sector by sector
