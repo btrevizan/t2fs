@@ -206,7 +206,7 @@ int seek2 (FILE2 handle, DWORD offset) {
     if(open_files[handle].is_valid != 1) return -1;
     
 	struct fcb file = open_files[handle];
-	if (set_current_pointer(offset, &file) < 0) return -1;
+	if (set_current_pointer((int)offset, &file) < 0) return -1;
 
 	open_files[handle] = file;
 	
@@ -1026,11 +1026,13 @@ unsigned int add_cluster(struct fcb *file) {
     return new_cluster;
 }
 
-int set_current_pointer(DWORD offset, struct fcb *file) {
-    if(offset > file->dir_entry.record.bytesFileSize) return -1;
+int set_current_pointer(int offset, struct fcb *file) {
+    if(offset < -1) return -1;
 
     if(offset == -1)
         offset = file->dir_entry.record.bytesFileSize;
+
+    if(offset > file->dir_entry.record.bytesFileSize) return -1;
 
     set_current_physical_cluster(offset, file);
     set_current_sector_on_cluster(offset, file);
