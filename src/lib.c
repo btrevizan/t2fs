@@ -74,12 +74,13 @@ FILE2 open2 (char *filename) {
     if(first_run == 1) {
         if(t2fs_init() < 0) return -1;
     }
-
+    
     int i = get_free_handle();
     if(i < 0) return -1; // N_FILES_OPEN opened
-
+ 
     struct fcb file;
     if(get_file(filename, &file) < 0) return -1;
+    if(is_dir(&file.dir_entry)) return -1;
 
     open_files[i] = file;
     return i;
@@ -553,6 +554,7 @@ int fat_bytes_size() {
 
 int resolve(char *path, struct directory_entry *entry, char *resolved_path, int size) {
     if(resolve_path(path, entry, resolved_path, size) < 0) return -1;
+
     if(is_link(entry)) {
         struct directory_entry resolved_entry;
         if(resolve_link((struct directory_entry *) entry, &resolved_entry, resolved_path, size) < 0) return -1;
@@ -639,6 +641,9 @@ int read_file(struct fcb *file, char *buffer, int size) {
 
 
 int write_file(struct fcb *file, char *buffer, int size) {
+    unsigned int curr_sector = file->current_sector_on_cluster;
+    unsigned int curr_byte = file->current_byte_on_sector;
+
     unsigned int sector = get_current_physical_sector(file);
     unsigned char aux_buffer[SECTOR_SIZE];
 
@@ -679,6 +684,10 @@ int write_file(struct fcb *file, char *buffer, int size) {
             file->current_byte_on_sector = SECTOR_SIZE - 1;
     }
 
+    unsigned int bytes_added = (curr_sector * SECTOR_SIZE + curr_byte) + bytes_written - file->dir_entry.record.bytesFileSize;
+    if(bytes_added > 0) file->dir_entry.record.bytesFileSize += bytes_added;
+
+    update_on_disk(&file->dir_entry);
     return bytes_written;
 }
 
@@ -1013,6 +1022,8 @@ unsigned int add_cluster(struct fcb *file) {
     fat[cluster] = new_cluster;
 
     if(save_fat(cluster) < 0) return -1;
+    
+    file->dir_entry.record.clustersFileSize += 1;
     return new_cluster;
 }
 
