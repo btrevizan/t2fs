@@ -421,12 +421,14 @@ int ln2(char *linkname, char *filename) {
 
 	struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_LINK;
-    file.dir_entry.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
     file.dir_entry.record.clustersFileSize = 1;
 
 	if (create_file(linkname, &file) < 0) return -1;
 	if (write_file(&file, filename, (int)strlen(filename) + 1) < 0) return -1;
 
+    file.dir_entry.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
+    update_on_disk(&file.dir_entry);
+    
 	return 0;
 }
 
