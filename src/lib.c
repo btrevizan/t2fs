@@ -148,53 +148,83 @@ int truncate2 (FILE2 handle) {
     
     struct fcb file = open_files[handle];
 
-    unsigned int removed_sectors = 1;
-    if(file.current_byte_on_sector > 0)
-        removed_sectors = 0;
-
     DWORD curr_cluster = file.current_physical_cluster;
     DWORD curr_sector = file.current_sector_on_cluster;
     DWORD curr_byte = file.current_byte_on_sector;
-    DWORD cluster = curr_cluster;
 
-    while(next_sector(&file) == 0) {
-        removed_sectors++;
+    DWORD curr_byte_on_file;
+    DWORD curr_logical_cluster = 0;
 
-        if(cluster != file.current_physical_cluster) {
-            free_cluster(cluster);
-            cluster = file.current_physical_cluster;
+    file.current_physical_cluster = file.dir_entry.record.firstCluster;
+    do {
+        if(file.current_physical_cluster == curr_cluster) break;
+        curr_logical_cluster++;
+    } while(next_cluster(&file) == 0);
+
+    curr_byte_on_file = curr_logical_cluster * SECTOR_SIZE * superblock.SectorsPerCluster;
+    curr_byte_on_file += SECTOR_SIZE * curr_sector + curr_byte;
+
+    DWORD removed_bytes = file.dir_entry.record.bytesFileSize - curr_byte_on_file;
+    DWORD removed_clusters = ceil((float)removed_bytes / SECTOR_SIZE) / superblock.SectorsPerCluster;
+    int real_removed_clusters = 0;
+
+    if(removed_clusters > 0) {
+        int clusters[removed_clusters];
+
+        for(int i = 0; i < removed_clusters; i++)
+            clusters[i] = 0;
+
+        if(curr_cluster != file.dir_entry.record.firstCluster) {
+            if(curr_sector == 0 && curr_byte == 0) {
+                clusters[0] = curr_cluster;
+                file.current_physical_cluster = curr_cluster;
+            }
+        } else {
+            file.current_physical_cluster = curr_cluster;
+            if(next_cluster(&file) == 0)
+                clusters[0] = file.current_physical_cluster;
+        }
+
+        int i = 1;
+        while(next_cluster(&file) && i < removed_clusters) {
+            clusters[i] = file.current_physical_cluster;
+            i++;
+        }
+        
+        for(i = removed_clusters - 1; i >= 0; i--) {
+            printf("ok\n");
+            if(clusters[i] != 0) {
+                free_cluster(clusters[i]);
+                real_removed_clusters++;
+            }
         }
     }
 
-    free_cluster(cluster);
-
-    DWORD last_byte = get_last_byte(file.dir_entry.record.bytesFileSize);
-    file.dir_entry.record.bytesFileSize -= ((removed_sectors - 1) * SECTOR_SIZE + last_byte + 1 - (256 - curr_byte));
-    file.dir_entry.record.clustersFileSize -= removed_sectors / superblock.SectorsPerCluster;
-
-    file.current_physical_cluster = curr_cluster;
-    file.current_sector_on_cluster = curr_sector - 1;
-    file.current_byte_on_sector = SECTOR_SIZE - 1;
-
+    file.dir_entry.record.bytesFileSize -= removed_bytes;
+    file.dir_entry.record.clustersFileSize -= real_removed_clusters;
+    
     if(curr_byte == 0) {
         if(curr_sector == 0) {
             if(curr_cluster == file.dir_entry.record.firstCluster) {
-                // Pointer is in the beginning of the file
-                file.dir_entry.record.bytesFileSize = 0;
-                file.dir_entry.record.clustersFileSize = 1;
-                file.current_physical_cluster = file.dir_entry.record.firstCluster;
+                file.current_physical_cluster = curr_cluster;
                 file.current_sector_on_cluster = 0;
                 file.current_byte_on_sector = 0;
             } else {
-                // Pointer is in the beginning of a cluster that is not the first cluster
+                file.current_physical_cluster = curr_cluster;
                 prev_cluster(&file);
+
                 file.current_sector_on_cluster = superblock.SectorsPerCluster - 1;
+                file.current_byte_on_sector = SECTOR_SIZE - 1;
             }
+        } else {
+            file.current_physical_cluster = curr_cluster;
+            file.current_sector_on_cluster = curr_sector - 1;
+            file.current_byte_on_sector = SECTOR_SIZE - 1;
         }
     } else {
-        // Pointer is in the middle of a sector
+        file.current_physical_cluster = curr_cluster;
         file.current_sector_on_cluster = curr_sector;
-        file.current_byte_on_sector = curr_byte - 1;
+        file.current_byte_on_sector = curr_byte - 1; 
     }
 
     update_on_disk(&file.dir_entry);
