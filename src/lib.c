@@ -1035,7 +1035,7 @@ int set_current_pointer(DWORD offset, struct fcb *file) {
 
     set_current_physical_cluster(offset, file);
     set_current_sector_on_cluster(offset, file);
-    return -1;
+    return 0;
 }
 
 
