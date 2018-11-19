@@ -23,6 +23,7 @@ int main() {
   ret_code = rmdir2("dir1");
   assert("Deve retornar um erro se o diretorio nao esta vazio", ret_code != 0);
 
+  //mkdir("empty_dir");
   //ret_code = rmdir2("empty_dir");
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 

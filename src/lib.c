@@ -81,7 +81,7 @@ FILE2 open2 (char *filename) {
     struct fcb file;
     if(get_file(filename, &file) < 0) return -1;
     if(is_dir(&file.dir_entry)) return -1;
-
+    
     open_files[i] = file;
     return i;
 }
@@ -93,7 +93,7 @@ int close2 (FILE2 handle) {
     }
 
 	if(!is_handle_valid(handle)) return -1;
-    if(update_on_disk(&open_files[handle].dir_entry) < 0) return -1;
+    //if(update_on_disk(&open_files[handle].dir_entry) < 0) return -1;
 
 	open_files[handle].is_valid = 0;
 	return 0;
@@ -203,9 +203,10 @@ int seek2 (FILE2 handle, DWORD offset) {
     }
 
 	if (!is_handle_valid(handle)) return -1;
-
+    if(open_files[handle].is_valid != 1) return -1;
+    
 	struct fcb file = open_files[handle];
-	if (set_current_pointer(offset, &file) < 0) return -1;
+	if (set_current_pointer((int)offset, &file) < 0) return -1;
 
 	open_files[handle] = file;
 	
@@ -425,7 +426,6 @@ int update_on_disk(struct directory_entry* entry) {
     entries[entry_on_sector] = entry->record;
 
     if (write_sector(entry->sector, (unsigned char *) entries) < 0) return -1;
-
     return 0;
 }
 
@@ -535,19 +535,15 @@ int load_fat() {
     unsigned int fat_size = fat_bytes_size();
     unsigned int fat_n_sectors = fat_size / SECTOR_SIZE;
     unsigned int sector = superblock.pFATSectorStart;
-    unsigned int i = 0;
 
-    fat = malloc(fat_size);
+    fat = (int *) malloc(fat_size);
     if(!fat) return -1;
 
-    while(fat_n_sectors > 0) {
-        if(read_sector(sector, (unsigned char *) fat + (SECTOR_SIZE * i)) < 0) return -1;
-
-        i++;
+    for(int i = 0; i < fat_n_sectors; i++) {
+        if(read_sector(sector, ((unsigned char *)fat) + (SECTOR_SIZE * i)) < 0) return -1;
         sector++;
-        fat_n_sectors--;
     }
-
+    
     return 0;
 }
 
@@ -612,9 +608,6 @@ int create_file(char *filename, struct fcb *file) {
     file->current_sector_on_cluster = 0;
     file->current_byte_on_sector = 0;
 
-    file->dir_entry.sector = get_current_physical_sector(file);
-    file->dir_entry.byte_on_sector = 0;
-
     return cluster;
 }
 
@@ -623,10 +616,20 @@ int read_file(struct fcb *file, char *buffer, int size) {
     if(file->dir_entry.record.bytesFileSize == 0) return 0;
 
     unsigned int sector = get_current_physical_sector(file);
+    unsigned int last_sector_on_last_cluster = superblock.SectorsPerCluster - ceil((file->dir_entry.record.clustersFileSize * superblock.SectorsPerCluster * SECTOR_SIZE - file->dir_entry.record.bytesFileSize) / (float)SECTOR_SIZE);
     unsigned char aux_buffer[SECTOR_SIZE];
 
     // Read current sector and adjust memcpy to start on current pointer
     if(read_sector(sector, aux_buffer) < 0) return 0;
+
+    if(fat[file->current_physical_cluster] == END_OF_FILE) {
+        // It is on last cluster
+        if(sector == last_sector_on_last_cluster) {
+            // It is on last sector
+            if(size > get_last_byte(file->dir_entry.record.bytesFileSize) - file->current_byte_on_sector)
+                size = get_last_byte(file->dir_entry.record.bytesFileSize) - file->current_byte_on_sector;
+        }
+    }
 
     unsigned int n = SECTOR_SIZE - file->current_byte_on_sector;
     if(n > size) n = size;
@@ -647,6 +650,10 @@ int read_file(struct fcb *file, char *buffer, int size) {
         if(read_sector(sector, aux_buffer) < 0) break;
 
         n = SECTOR_SIZE;
+        if(fat[file->current_physical_cluster] == END_OF_FILE)
+            if(sector == last_sector_on_last_cluster)
+                n = get_last_byte(file->dir_entry.record.bytesFileSize);
+
         if(bytes_read + n > size) n = size - bytes_read;
         if(bytes_read + n > file->dir_entry.record.bytesFileSize) n = file->dir_entry.record.bytesFileSize - bytes_read;
 
@@ -658,8 +665,10 @@ int read_file(struct fcb *file, char *buffer, int size) {
 
     file->current_byte_on_sector += n % SECTOR_SIZE;
     if(file->current_byte_on_sector % SECTOR_SIZE == 0) {
-        if(next_sector(file) < 0) 
+        if(next_sector(file) < 0) {
             file->current_byte_on_sector = SECTOR_SIZE - 1;
+            if(n == 1) return 0;
+        }
     }
 
     memcpy(file->current_sector_data, (const char *)aux_buffer, n);
@@ -683,7 +692,7 @@ int write_file(struct fcb *file, char *buffer, int size) {
 
     unsigned int bytes_written = n;
 
-    memcpy((char *) (aux_buffer + file->current_byte_on_sector), (const char *)buffer, n);
+    memcpy((aux_buffer + file->current_byte_on_sector), buffer, n);
     if(write_sector(sector, aux_buffer) < 0) return -1;
 
     // Write the rest, sector by sector
@@ -716,7 +725,7 @@ int write_file(struct fcb *file, char *buffer, int size) {
     unsigned int bytes_added = (curr_sector * SECTOR_SIZE + curr_byte) + bytes_written - file->dir_entry.record.bytesFileSize;
     if(bytes_added > 0) file->dir_entry.record.bytesFileSize += bytes_added;
 
-    update_on_disk(&file->dir_entry);
+    if(update_on_disk(&file->dir_entry) < 0) return 0;
     return bytes_written;
 }
 
@@ -726,7 +735,7 @@ int delete_file(struct directory_entry *entry) {
 
     unsigned int cluster = entry->record.firstCluster;
     unsigned int prev_cluster;
-
+    
     while(fat[cluster] != END_OF_FILE) {
         prev_cluster = cluster;
         cluster = fat[cluster];
@@ -855,7 +864,7 @@ int search_entry(char *name, struct directory_entry *dir_entry, struct directory
 
     create_fcb(dir_entry, &dir_file);
 
-    read_file(&dir_file, (char *) entries, CLUSTER_SIZE);
+    if(read_file(&dir_file, (char *) entries, CLUSTER_SIZE) <= 0) return -1;
 
     int i;
     for (i = 0; i < num_entries; i++) {
@@ -864,9 +873,7 @@ int search_entry(char *name, struct directory_entry *dir_entry, struct directory
     if (i == num_entries) return -1;
 
     entry->sector = superblock.DataSectorStart + (dir_entry->record.firstCluster * superblock.SectorsPerCluster) + (i * sizeof(struct t2fs_record)) / SECTOR_SIZE;
-
     entry->byte_on_sector = (i * sizeof(struct t2fs_record)) % SECTOR_SIZE;
-
     entry->record = entries[i];
 
     return 0;
@@ -1015,7 +1022,7 @@ unsigned int alloc_cluster() {
     unsigned int cluster = 0;
     int n_clusters = fat_bytes_size() / 4;
 
-    while(fat[cluster] != FREE_CLUSTER && cluster < n_clusters)
+    while(fat[cluster] != FREE_CLUSTER && fat[cluster] == BAD_CLUSTER && cluster < n_clusters)
         cluster++;
 
     if(cluster == n_clusters) return -1;
@@ -1049,15 +1056,17 @@ unsigned int add_cluster(struct fcb *file) {
     return new_cluster;
 }
 
-int set_current_pointer(DWORD offset, struct fcb *file) {
-    if(offset > file->dir_entry.record.bytesFileSize) return -1;
+int set_current_pointer(int offset, struct fcb *file) {
+    if(offset < -1) return -1;
 
     if(offset == -1)
-        offset = file->dir_entry.record.bytesFileSize;
+        offset = get_last_byte(file->dir_entry.record.bytesFileSize);
+
+    if(offset > file->dir_entry.record.bytesFileSize) return -1;
 
     set_current_physical_cluster(offset, file);
     set_current_sector_on_cluster(offset, file);
-    return -1;
+    return 0;
 }
 
 

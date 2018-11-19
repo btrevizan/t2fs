@@ -71,7 +71,7 @@ unsigned int alloc_cluster();
 int dealloc_cluster(unsigned int cluster);
 unsigned int add_cluster(struct fcb *file);
 
-int set_current_pointer(DWORD offset, struct fcb *file);
+int set_current_pointer(int offset, struct fcb *file);
 DWORD get_current_physical_sector(const struct fcb *file);
 DWORD get_current_logical_sector(const struct fcb *file, DWORD sector);
 int set_current_physical_cluster(DWORD offset, struct fcb *file);
