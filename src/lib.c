@@ -6,14 +6,14 @@
 #include "../include/helpers.h"
 #include "../include/apidisk.h"
 
-#define CURRENT_DIR_SIZE 1024
+#define MAX_PATH_SIZE 1024
 
 static char first_run = 1;
 static struct t2fs_superbloco superblock;
 static struct fcb open_files[N_OPEN_FILES];
 static struct fcb open_dirs[1];
-static char current_dir[CURRENT_DIR_SIZE];
-static int *fat;
+static char current_dir[MAX_PATH_SIZE];
+static unsigned int *fat;
 static unsigned int CLUSTER_SIZE;
 
 int identify2 (char *name, int size) {
@@ -298,8 +298,8 @@ int chdir2 (char *pathname) {
     }
 
     struct directory_entry entry;
-    char resolved_path[CURRENT_DIR_SIZE];
-    if(resolve(pathname, &entry, resolved_path, CURRENT_DIR_SIZE) < 0) return -1;
+    char resolved_path[MAX_PATH_SIZE];
+    if(resolve(pathname, &entry, resolved_path, MAX_PATH_SIZE) < 0) return -1;
     if(!is_dir(&entry)) return -1;
 
     strcpy(current_dir, resolved_path);
@@ -389,7 +389,7 @@ int ln2(char *linkname, char *filename) {
     file.dir_entry.record.clustersFileSize = 1;
 
 	if (create_file(linkname, &file) < 0) return -1;
-	if (write_file(&file, filename, (int)strlen(filename)) < 0) return -1;
+	if (write_file(&file, filename, (int)strlen(filename) + 1) < 0) return -1;
 
 	return 0;
 }
@@ -437,8 +437,10 @@ int resolve_link(const struct directory_entry* link_entry, struct directory_entr
     while (1) {
         create_fcb(link_entry, &file);
         read_file(&file, path, CLUSTER_SIZE);
-        if (resolve_path(path, resolved_entry, resolved_path, size) < 0) {
-            return -1;
+        int ret_code = resolve_path(path, resolved_entry, resolved_path, size);
+        if (ret_code < 0) {
+            // Retorna o mesmo código que resolve_path
+            return ret_code;
         }
         if (!is_link(resolved_entry)) break;
         link_entry = resolved_entry;
@@ -477,8 +479,6 @@ int resolve_path(char* path, struct directory_entry* resolved_entry, char *resol
     name = strtok(path, "/");
 
     while (name) {
-        if (search_entry(name, resolved_entry, resolved_entry) < 0) return -1;
-
         if (resolved_path != NULL) {
             i = strlen(resolved_path);
 
@@ -497,6 +497,18 @@ int resolve_path(char* path, struct directory_entry* resolved_entry, char *resol
                 strcat(resolved_path, "/");
                 strcat(resolved_path, name);
             }
+        }
+
+        if (search_entry(name, resolved_entry, resolved_entry) < 0) {
+            name = strtok(NULL, "/");
+
+            // Se for o último componente, retorna -2, indicando que o arquivo 
+            // não existe, mas o caminho até o diretório pai existe.
+            if (name == NULL) {
+                return -2;
+            }
+
+            return -1;
         }
 
         name = strtok(NULL, "/");
@@ -562,7 +574,20 @@ int resolve(char *path, struct directory_entry *entry, char *resolved_path, int 
 
 
 int create_file(char *filename, struct fcb *file) { 
-    if(exists(filename)) return -1;
+    struct directory_entry entry;
+    char resolved_path[MAX_PATH_SIZE];
+
+    if (resolve_path(filename, &entry, NULL, 0) == 0) {
+        // Se for um link, deve apontar para um caminho inexistente
+        if (is_link(&entry)
+            && resolve_link(&entry, &entry, resolved_path, MAX_PATH_SIZE) == -2)
+        {
+            filename = resolved_path;
+        }
+        else {
+            return -1;
+        }
+    }
 
     unsigned int cluster = alloc_cluster();
     if(cluster < 0) return -1;
@@ -593,7 +618,7 @@ int read_file(struct fcb *file, char *buffer, int size) {
     unsigned int last_sector_on_last_cluster = superblock.SectorsPerCluster - ceil((file->dir_entry.record.clustersFileSize * superblock.SectorsPerCluster * SECTOR_SIZE - file->dir_entry.record.bytesFileSize) / (float)SECTOR_SIZE);
     unsigned char aux_buffer[SECTOR_SIZE];
 
-    // Read current sector and adjust strncpy to start on current pointer
+    // Read current sector and adjust memcpy to start on current pointer
     if(read_sector(sector, aux_buffer) < 0) return 0;
 
     if(fat[file->current_physical_cluster] == END_OF_FILE) {
@@ -682,7 +707,7 @@ int write_file(struct fcb *file, char *buffer, int size) {
                 if(read_sector(sector, aux_buffer) < 0) break;
             }
 
-            strncpy((char *)aux_buffer, (const char *)(buffer + bytes_written), n);
+            memcpy((char *)aux_buffer, (const char *)(buffer + bytes_written), n);
             if(write_sector(sector, aux_buffer) < 0) break;
 
             bytes_written += n;
@@ -931,13 +956,6 @@ int is_empty(const struct directory_entry *file) {
     }
 
     return 1;
-}
-
-
-int exists(char *filepath) {
-    struct directory_entry entry;
-    if(resolve_path(filepath, &entry, NULL, 0) == 0) return 1;
-    return 0;
 }
 
 
