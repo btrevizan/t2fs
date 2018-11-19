@@ -12,22 +12,17 @@ int main() {
   int ret_code = read2(0, buffer, 8);
   assert("Se o handle nao foi aberto, retorna um erro", ret_code < 0);
 
-  // Cria um arquivo com conteudo
-  FILE2 handle = create2("file");
-  write2(handle, "conteudo", 8);
-  close2(handle);
-
-  handle = open2("file");
+  FILE2 handle = open2("file1.txt");
   ret_code = read2(handle, buffer, 3);
   assert("Deve retornar o numero de bytes lido", ret_code == 3);
-  assert("Deve fazer a leitura corretamente", strncmp(buffer, "con", 3) == 0);
+  assert("Deve fazer a leitura corretamente", strncmp(buffer, "Ess", 3) == 0);
 
   read2(handle, buffer, 2);
-  assert("Deve avancar o current pointer", strncmp(buffer, "te", 2) == 0);
+  assert("Deve avancar o current pointer", strncmp(buffer, "e ", 2) == 0);
 
-  ret_code = read2(handle, buffer, 5);
+  ret_code = read2(handle, buffer, 60);
   assert("Se chegou no fim do arquivo antes de ler size bytes, o numero "
-         "de bytes efetivamente lido deve ser retornado", ret_code == 3);
+         "de bytes efetivamente lido deve ser retornado", ret_code == 50);
   
   close2(handle);
   ret_code = read2(handle, buffer, 8);

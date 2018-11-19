@@ -9,9 +9,7 @@ int main() {
 
   DIRENT2 entry;
 
-  mkdir2("dir");
-
-  DIR2 dir_handle = opendir2("dir");
+  DIR2 dir_handle = opendir2("dir1");
   int ret_code = readdir2(dir_handle, &entry);
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 
@@ -24,6 +22,8 @@ int main() {
   assert("Deve avancar o current entry",
          strcmp(entry.name, "..") == 0);
   
+  readdir2(dir_handle, &entry);
+  readdir2(dir_handle, &entry);
   ret_code = readdir2(dir_handle, &entry);
   assert("Se chegou no fim da lista de entradas, deve retornar um erro", 
          ret_code != 0);

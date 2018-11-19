@@ -16,12 +16,10 @@ int main() {
   assert("Deve retornar um erro se o filename referencia um diretorio", 
          handle[0] < 0);
 
-  handle[0] = create2("file");
-  close2(handle[0]);
-  handle[0] = open2("file");
+  handle[0] = open2("file1.txt");
   assert("O handle deve ser nao-negativo", handle[0] >= 0);
 
-  handle[1] = open2("file");
+  handle[1] = open2("file1.txt");
   assert("Deve ser possivel abrir o mesmo arquivo mais de uma vez", 
          handle[1] >= 0);
   
@@ -34,7 +32,7 @@ int main() {
   
   int failed = 0;
   for (int i = 2; i < 10; i++) {
-    handle[i] = open2("file");
+    handle[i] = open2("file1.txt");
     if (handle[i] < 0) {
       failed = 1;
       break;
@@ -47,16 +45,15 @@ int main() {
   }
 
   buffer[0] = '\0'; // buffer = ""
-  handle[0] = open2("file");
+  handle[0] = open2("file1.txt");
   read2(handle[0], buffer, 8);
   assert("O current pointer deve ser colocado na posicao 0", 
          strcmp(buffer, "conteudo") == 0);
   
   close2(handle[0]);
 
-  ln2("link", "file");
   buffer[0] = '\0'; // buffer = ""
-  handle[0] = open2("link");
+  handle[0] = open2("link1");
   read2(handle[0], buffer, 8);
   assert("Se o filename referencia um link para um arquivo regular, o "
          "arquivo apontado pelo link deve ser aberto", 
@@ -64,7 +61,6 @@ int main() {
   
   close2(handle[0]);
   
-  ln2("dir_link", ".");
   handle[0] = open2("dir_link");
   assert("Se o filename referencia um link para um diretorio, deve retornar "
          "um erro", handle[0] < 0);
