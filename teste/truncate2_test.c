@@ -12,8 +12,7 @@ int main() {
   int ret_code = truncate2(0);
   assert("Se o handle nao foi aberto, retorna um erro", ret_code != 0);
 
-  FILE2 handle = create2("file");
-  write2(handle, "conteudo", 8);
+  FILE2 handle = open2("file1.txt");
   seek2(handle, 5);
   ret_code = truncate2(handle);
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
@@ -24,14 +23,14 @@ int main() {
   seek2(handle, 0);
   int bytes_read = read2(handle, buffer, 8);
   assert("Deve realizar o truncamento corretamente", 
-         bytes_read == 5 && strncmp(buffer, "conte", 5) == 0);
+         bytes_read == 5 && strncmp(buffer, "Esse ", 5) == 0);
   
   // Obter a entrada no diretório
   DIR2 dir_handle = opendir2(".");
   DIRENT2 dir_entry;
 
   while (readdir2(dir_handle, &dir_entry) == 0) {
-    if (strcmp(dir_entry.name, "file") == 0) {
+    if (strcmp(dir_entry.name, "file1.txt") == 0) {
       break;
     }
   }

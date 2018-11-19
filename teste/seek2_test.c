@@ -12,14 +12,12 @@ int main() {
   int ret_code = seek2(0, 0);
   assert("Se o handle nao foi aberto, retorna um erro", ret_code != 0);
 
-  // Cria um arquivo com conteúdo
-  FILE2 handle = create2("file");
-  write2(handle, "conteudo", 8);
+  FILE2 handle = open2("file1.txt");
 
   ret_code = seek2(handle, -2);
   assert("Se o offset for menor que -1, retorna um erro", ret_code != 0);
 
-  ret_code = seek2(handle, 9);
+  ret_code = seek2(handle, 60);
   assert("Se o offset for maior que o tamanho do arquivo, retorna um erro", 
          ret_code != 0);
 
@@ -28,7 +26,7 @@ int main() {
 
   read2(handle, buffer, 2);
   assert("Deve reposicionar o current pointer corretamente", 
-         strncmp(buffer, "te", 2) == 0);
+         strncmp(buffer, "e ", 2) == 0);
   
   seek2(handle, -1);
   ret_code = read2(handle, buffer, 1);
