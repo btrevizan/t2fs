@@ -272,12 +272,13 @@ int rmdir2 (char *pathname) {
     }
 
     struct directory_entry entry;
-
     if(resolve_path(pathname, &entry, NULL, 0) < 0) return -1;
+    if(strcmp(entry.record.name, ".") == 0) return -1;
+    if(strcmp(entry.record.name, "..") == 0) return -1;
+    if(strcmp(entry.record.name, "/") == 0) return -1;
     if(!is_dir(&entry)) return -1;
     if(!is_empty(&entry)) return -1;
     if(is_linkf(&entry)) return -1;
-
     return delete_file(&entry);
 }
 
