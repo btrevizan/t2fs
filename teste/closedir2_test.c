@@ -7,7 +7,7 @@
 int main() {
   start_test("closedir2");
 
-  DIR2 dir_handle = opendir2(".");
+  DIR2 dir_handle = opendir2("dir1");
   int ret_code = closedir2(dir_handle);
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 
