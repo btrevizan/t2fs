@@ -630,8 +630,10 @@ int read_file(struct fcb *file, char *buffer, int size) {
 
     file->current_byte_on_sector += n % SECTOR_SIZE;
     if(file->current_byte_on_sector % SECTOR_SIZE == 0) {
-        if(next_sector(file) < 0) 
+        if(next_sector(file) < 0) {
             file->current_byte_on_sector = SECTOR_SIZE - 1;
+            if(n == 1) return 0;
+        }
     }
 
     memcpy(file->current_sector_data, (const char *)aux_buffer, n);
