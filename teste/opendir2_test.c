@@ -7,9 +7,9 @@
 int main() {
   start_test("opendir2");
 
-  mkdir2("dir");
+  create2("dir1/teste");
 
-  DIR2 dir_handle = opendir2("dir");
+  DIR2 dir_handle = opendir2("dir1");
   assert("O handle deve ser nao-negativo", dir_handle >= 0);
 
   DIRENT2 entry;
