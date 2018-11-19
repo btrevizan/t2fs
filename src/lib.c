@@ -484,6 +484,10 @@ int resolve_path(char* path, struct directory_entry* resolved_entry, char *resol
             if (strcmp(name, "..") == 0) {
                 // Remove o último componente
                 while (resolved_path[i] != '/') i--;
+                if (i == 0) {
+                    // Deixa apenas o "/" da raiz
+                    i++;
+                }
                 resolved_path[i] = '\0';
             }
             else if (strcmp(name, ".") != 0) {
