@@ -36,7 +36,10 @@ FILE2 create2 (char *filename) {
 
     if(exists(filename) == 1) {
         i = open2(filename);
+
         if(!is_handle_valid(i)) return -1;
+        if(is_dir(&open_files[i].dir_entry)) return -1;
+        if(is_linkd(&open_files[i].dir_entry)) return -1;
 
         truncate2(i);
         return i;
@@ -564,10 +567,8 @@ int create_file(char *filename, struct fcb *file) {
     unsigned int cluster = alloc_cluster();
     if(cluster < 0) return -1;
 
-    char name[MAX_FILE_NAME_SIZE];
-    get_file_name(filename, name);
+    get_file_name(filename, file->dir_entry.record.name);
 
-    strncpy(file->dir_entry.record.name, name, strlen(file->dir_entry.record.name));
     file->dir_entry.record.firstCluster = cluster;
 
     struct fcb parent;
@@ -590,13 +591,16 @@ int create_file(char *filename, struct fcb *file) {
 
 
 int read_file(struct fcb *file, char *buffer, int size) {
+    if(file->dir_entry.record.bytesFileSize == 0) return 0;
+
     unsigned int sector = get_current_physical_sector(file);
     unsigned char aux_buffer[SECTOR_SIZE];
 
     // Read current sector and adjust strncpy to start on current pointer
-    if(read_sector(sector, aux_buffer) < 0) return -1;
+    if(read_sector(sector, aux_buffer) < 0) return 0;
 
     unsigned int n = SECTOR_SIZE - file->current_byte_on_sector;
+
     if(n > size) n = size;
 
     unsigned int bytes_read = n;
