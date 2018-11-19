@@ -35,15 +35,21 @@ FILE2 create2 (char *filename) {
     if(i < 0) return -1; // N_FILES_OPEN opened
 
     struct fcb file;
-    int j = open2(filename);
-    if(is_handle_valid(j)) {
-        i = j;
-        file = open_files[i];
-
-        if(is_dir(&file.dir_entry)) return -1;
+    if(resolve_path(filename, &file.dir_entry, NULL, 0) == 0) {
         if(is_linkd(&file.dir_entry)) return -1;
+        
+        if(is_link(&file.dir_entry)) {
+            struct directory_entry resolved_entry;
+            if(resolve_link(&file.dir_entry, &resolved_entry, NULL, 0) < 0) return -1;
+            file.dir_entry = resolved_entry;
+        }
 
-        truncate2(i);
+        create_fcb(&file.dir_entry, &file);
+        open_files[i] = file;
+        
+        if(is_dir(&file.dir_entry)) return -1;
+
+        truncate2(i);   
     } else {
         file.dir_entry.record.TypeVal = TYPEVAL_REGULAR;
         file.dir_entry.record.bytesFileSize = 0;
