@@ -64,7 +64,7 @@ int delete2 (char *filename) {
 
     struct directory_entry dir_entry;
     if(resolve_path(filename, &dir_entry, NULL, 0) < 0) return -1;
-    if(!is_file(&dir_entry) || !is_link(&dir_entry)) return -1;
+    if(!is_file(&dir_entry) && !is_link(&dir_entry)) return -1;
 
     return delete_file(&dir_entry);
 }
