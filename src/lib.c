@@ -587,9 +587,6 @@ int create_file(char *filename, struct fcb *file) {
     file->current_sector_on_cluster = 0;
     file->current_byte_on_sector = 0;
 
-    file->dir_entry.sector = get_current_physical_sector(file);
-    file->dir_entry.byte_on_sector = 0;
-
     return cluster;
 }
 
@@ -702,7 +699,7 @@ int delete_file(struct directory_entry *entry) {
 
     unsigned int cluster = entry->record.firstCluster;
     unsigned int prev_cluster;
-
+    
     while(fat[cluster] != END_OF_FILE) {
         prev_cluster = cluster;
         cluster = fat[cluster];

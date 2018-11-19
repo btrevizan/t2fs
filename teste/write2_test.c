@@ -56,6 +56,7 @@ int main() {
       break;
     }
   }
+  
   closedir2(dir_handle);
   assert("Se a escrita nao aumenta o tamanho do arquivo, o tamanho do "
          "arquivo indicado na entrada do diretorio nao deve aumentar", 
