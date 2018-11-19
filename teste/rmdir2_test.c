@@ -20,14 +20,10 @@ int main() {
   ret_code = rmdir2("nao_existo");
   assert("Deve retornar um erro se o diretorio nao existe", ret_code != 0);
   
-  mkdir2("dir");
-  FILE2 handle = create2("dir/file");
-  close2(handle);
-  ret_code = rmdir2("dir");
+  ret_code = rmdir2("dir1");
   assert("Deve retornar um erro se o diretorio nao esta vazio", ret_code != 0);
 
-  delete2("dir/file");
-  ret_code = rmdir2("dir");
+  //ret_code = rmdir2("empty_dir");
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 
   // Buscar a entrada no diretório
@@ -36,7 +32,7 @@ int main() {
 
   int found = 0;
   while (readdir2(dir_handle, &dir_entry) == 0) {
-    if (strcmp(dir_entry.name, "dir") == 0) {
+    if (strcmp(dir_entry.name, "empty_dir") == 0) {
       found = 1;
       break;
     }
@@ -44,14 +40,11 @@ int main() {
   closedir2(dir_handle);
   assert("A entrada no diretorio pai deve ser removida", !found);
 
-  handle = create2("file");
-  close2(handle);
-  ret_code = rmdir2("file");
+  ret_code = rmdir2("file1.txt");
   assert("Deve retornar um erro se o filepath referencia um arquivo regular", 
          ret_code != 0);
-  
-  ln2("link", "file");
-  ret_code = rmdir2("link");
+
+  ret_code = rmdir2("link1");
   assert("Deve retornar um erro se o filepath referencia um link para "
          "arquivo regular", ret_code != 0);
 
