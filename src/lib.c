@@ -1021,7 +1021,7 @@ unsigned int alloc_cluster() {
     int cluster;
     int n_clusters = fat_bytes_size() / 4;
 
-    for(cluster = 0; cluster < n_clusters; cluster++) {
+    for(cluster = 2; cluster < n_clusters; cluster++) {
         if(fat[cluster] == FREE_CLUSTER) break;
     }
 
