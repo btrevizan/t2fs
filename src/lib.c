@@ -818,19 +818,24 @@ int search_entry(char *name, struct directory_entry *dir_entry, struct directory
 
     create_fcb(dir_entry, &dir_file);
 
-    read_file(&dir_file, (char *) entries, CLUSTER_SIZE);
+    //read_file(&dir_file, (char *) entries, CLUSTER_SIZE);
+    int num_sectors = 4;
+    unsigned char *ptr = (unsigned char *) entries;
+    for (int idx = 0; idx < num_sectors; idx++) {
+        read_sector(superblock.DataSectorStart + (dir_entry->record.firstCluster * superblock.SectorsPerCluster)          + idx, ptr + (idx * SECTOR_SIZE));
+    }
 
     int i;
     for (i = 0; i < num_entries; i++) {
-        if (strcmp(entries[i].name, name) == 0) break;
+        if (strcmp(entries[i].name, name) == 0 && entries[i].TypeVal != TYPEVAL_INVALIDO) break;
     }
     if (i == num_entries) return -1;
-
-    entry->record = entries[i];
 
     entry->sector = superblock.DataSectorStart + (dir_entry->record.firstCluster * superblock.SectorsPerCluster) + (i * sizeof(struct t2fs_record)) / SECTOR_SIZE;
 
     entry->byte_on_sector = (i * sizeof(struct t2fs_record)) % SECTOR_SIZE;
+
+    entry->record = entries[i];
 
     return 0;
 }
