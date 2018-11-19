@@ -606,7 +606,7 @@ int read_file(struct fcb *file, char *buffer, int size) {
     if(n > size) n = size;
 
     unsigned int bytes_read = n;
-    strncpy(buffer, (const char *)(aux_buffer + file->current_byte_on_sector), n);
+    memcpy(buffer, (const char *)(aux_buffer + file->current_byte_on_sector), n);
 
     // Read the rest, sector by sector
     while(bytes_read < size) {
@@ -619,7 +619,7 @@ int read_file(struct fcb *file, char *buffer, int size) {
         n = SECTOR_SIZE;
         if(bytes_read + n > size) n = size - bytes_read;
 
-        strncpy((buffer + bytes_read), (const char *)aux_buffer, n);
+        memcpy((buffer + bytes_read), (const char *)aux_buffer, n);
         bytes_read += n;
 
         if(n != SECTOR_SIZE) break;
@@ -631,7 +631,7 @@ int read_file(struct fcb *file, char *buffer, int size) {
             file->current_byte_on_sector = SECTOR_SIZE - 1;
     }
 
-    strncpy(file->current_sector_data, (const char *)aux_buffer, n);
+    memcpy(file->current_sector_data, (const char *)aux_buffer, n);
     file->num_bytes_read = n;
 
     return bytes_read;
@@ -822,12 +822,7 @@ int search_entry(char *name, struct directory_entry *dir_entry, struct directory
 
     create_fcb(dir_entry, &dir_file);
 
-    //read_file(&dir_file, (char *) entries, CLUSTER_SIZE);
-    int num_sectors = 4;
-    unsigned char *ptr = (unsigned char *) entries;
-    for (int idx = 0; idx < num_sectors; idx++) {
-        read_sector(superblock.DataSectorStart + (dir_entry->record.firstCluster * superblock.SectorsPerCluster)          + idx, ptr + (idx * SECTOR_SIZE));
-    }
+    read_file(&dir_file, (char *) entries, CLUSTER_SIZE);
 
     int i;
     for (i = 0; i < num_entries; i++) {
