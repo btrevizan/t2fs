@@ -13,7 +13,7 @@ static struct t2fs_superbloco superblock;
 static struct fcb open_files[N_OPEN_FILES];
 static struct fcb open_dirs[1];
 static char current_dir[MAX_PATH_SIZE];
-static unsigned int *fat;
+static int *fat;
 static unsigned int CLUSTER_SIZE;
 
 int identify2 (char *name, int size) {
