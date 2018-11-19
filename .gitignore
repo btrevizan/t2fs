@@ -61,5 +61,6 @@ CMakeLists.txt
 .vscode/
 /exemplo/*
 !/exemplo/*.c
+!/exemplo/makefile
 /teste/test_template.c
 teste.c
