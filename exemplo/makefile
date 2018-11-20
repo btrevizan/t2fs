@@ -9,3 +9,6 @@ main: main.c $(INC_DIR)t2fs.h $(LIB_DIR)libt2fs.a t2fs_disk.dat
 
 run: main
 	./main
+
+clean:
+	rm -rf main t2fs_disk.dat
