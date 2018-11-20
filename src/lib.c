@@ -192,7 +192,6 @@ int truncate2 (FILE2 handle) {
         }
         
         for(i = removed_clusters - 1; i >= 0; i--) {
-            printf("ok\n");
             if(clusters[i] != 0) {
                 free_cluster(clusters[i]);
                 real_removed_clusters++;
@@ -264,10 +263,15 @@ int mkdir2 (char *pathname) {
 
     unsigned int cluster = create_file(pathname, &file);
     if(cluster < 0) return -1;
+    file.current_physical_cluster = cluster;
 
     // Fill directory with invalid entries
     struct t2fs_record invalid_record;
+    strcpy(invalid_record.name, "invalid");
     invalid_record.TypeVal = TYPEVAL_INVALIDO;
+    invalid_record.bytesFileSize = 0;
+    invalid_record.clustersFileSize = 0;
+    invalid_record.firstCluster = 0;
 
     unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
     unsigned int n_records = (superblock.SectorsPerCluster * SECTOR_SIZE) / record_size;
@@ -428,7 +432,7 @@ int ln2(char *linkname, char *filename) {
 
     file.dir_entry.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
     update_on_disk(&file.dir_entry);
-    
+
 	return 0;
 }
 
@@ -852,29 +856,26 @@ int get_parent_filepath(char *filepath, char *parent_pathname) {
 int add_entry(struct directory_entry *entry, struct directory_entry *dir) {
     if(!is_dir(dir)) return -1;
 
-    unsigned char buffer[SECTOR_SIZE];
-    unsigned int sector = superblock.DataSectorStart + dir->record.firstCluster * superblock.SectorsPerCluster;
-
-    struct t2fs_record aux_record;
     unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
+    struct t2fs_record entries[SECTOR_SIZE / record_size];
+
+    struct fcb file;
+    create_fcb(dir, &file);
+    unsigned int sector = get_current_physical_sector(&file);
 
     for(int i = 0; i < superblock.SectorsPerCluster; i++) {
-        read_sector(sector + i, buffer);
+        read_sector(sector + i, (unsigned char *)entries);
 
         for(int j = 0; j < SECTOR_SIZE / record_size; j++) {
-            if(!(i == 0 && (j == 0 || j == 1))) {
-                memcpy(&aux_record, (buffer + j * record_size), record_size);
+            if(entries[j].TypeVal == TYPEVAL_INVALIDO) {
+                entries[j] = entry->record;
 
-                if(aux_record.TypeVal == TYPEVAL_INVALIDO) {
-                    memcpy((buffer + j * record_size), &entry->record, record_size);
+                entry->sector = sector + i;
+                entry->byte_on_sector = j * record_size;
 
-                    entry->sector = sector + i;
-                    entry->byte_on_sector = j * record_size;
-
-                    if(write_sector(sector + i, buffer) < 0) return -1;
-                    return 0;
-                }
-            }
+                if(write_sector(sector + i, (unsigned char *)entries) < 0) return -1;
+                return 0;
+            }  
         }
     }
 
@@ -978,20 +979,19 @@ int is_linkd(const struct directory_entry *file) {
 int is_empty(const struct directory_entry *file) {
     if(!is_dir(file)) return 0;
 
-    struct t2fs_record record;
+    struct fcb file_fcb;
+    create_fcb(file, &file_fcb);
+
     unsigned int record_size = (unsigned int) sizeof(struct t2fs_record);
-    unsigned int sector = file->sector;
-    unsigned char buffer[SECTOR_SIZE];
+    unsigned int sector = get_current_physical_sector(&file_fcb);
+    struct t2fs_record entries[SECTOR_SIZE / record_size];
 
     for(int i = 0; i < superblock.SectorsPerCluster; i++) {
-        read_sector(sector + i, buffer);
+        read_sector(sector + i, (unsigned char *)entries);
 
-        for(int j = 0; j < SECTOR_SIZE / record_size; j++) {
-            if(!(i == 0 && (j == 0 || j == 1))) {
-                memcpy(&record, (buffer + j * record_size), record_size);
-                if(record.TypeVal == TYPEVAL_DIRETORIO || record.TypeVal == TYPEVAL_REGULAR || record.TypeVal == TYPEVAL_LINK)
-                    return 0;
-            }
+        for(int j = 2; j < SECTOR_SIZE / record_size; j++) {
+            if(entries[j].TypeVal == TYPEVAL_DIRETORIO || entries[j].TypeVal == TYPEVAL_REGULAR || entries[j].TypeVal == TYPEVAL_LINK)
+                return 0;
         }
     }
 
