@@ -237,15 +237,15 @@ int seek2 (FILE2 handle, DWORD offset) {
         if(t2fs_init() < 0) return -1;
     }
 
-	if (!is_handle_valid(handle)) return -1;
+    if (!is_handle_valid(handle)) return -1;
     if(open_files[handle].is_valid != 1) return -1;
     
-	struct fcb file = open_files[handle];
-	if (set_current_pointer((int)offset, &file) < 0) return -1;
+    struct fcb file = open_files[handle];
+    if (set_current_pointer((int)offset, &file) < 0) return -1;
 
-	open_files[handle] = file;
+    open_files[handle] = file;
 	
-	return 0;
+    return 0;
 }
 
 
