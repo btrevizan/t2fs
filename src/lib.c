@@ -213,17 +213,17 @@ int truncate2 (FILE2 handle) {
                 prev_cluster(&file);
 
                 file.current_sector_on_cluster = superblock.SectorsPerCluster - 1;
-                file.current_byte_on_sector = SECTOR_SIZE - 1;
+                file.current_byte_on_sector = SECTOR_SIZE;
             }
         } else {
             file.current_physical_cluster = curr_cluster;
             file.current_sector_on_cluster = curr_sector - 1;
-            file.current_byte_on_sector = SECTOR_SIZE - 1;
+            file.current_byte_on_sector = SECTOR_SIZE;
         }
     } else {
         file.current_physical_cluster = curr_cluster;
         file.current_sector_on_cluster = curr_sector;
-        file.current_byte_on_sector = curr_byte - 1; 
+        file.current_byte_on_sector = curr_byte; 
     }
 
     update_on_disk(&file.dir_entry);
@@ -665,6 +665,10 @@ int read_file(struct fcb *file, char *buffer, int size) {
     unsigned int sector = get_current_physical_sector(file);
     unsigned int last_sector_on_last_cluster = superblock.SectorsPerCluster - ceil((file->dir_entry.record.clustersFileSize * superblock.SectorsPerCluster * SECTOR_SIZE - file->dir_entry.record.bytesFileSize) / (float)SECTOR_SIZE);
     unsigned char aux_buffer[SECTOR_SIZE];
+
+    if(file->current_sector_on_cluster == last_sector_on_last_cluster)
+        if(file->current_byte_on_sector == get_last_byte(file->dir_entry.record.bytesFileSize) + 1)
+            return 0;
 
     // Read current sector and adjust memcpy to start on current pointer
     if(read_sector(sector, aux_buffer) < 0) return 0;
