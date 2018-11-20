@@ -256,13 +256,17 @@ int mkdir2 (char *pathname) {
 
     if(open_dirs[0].is_valid == 1) return -1;
 
+    struct directory_entry resolved_entry;
+    if(resolve_path(pathname, &resolved_entry, NULL, 0) == 0) return -1;
+
     struct fcb file;
     file.dir_entry.record.TypeVal = TYPEVAL_DIRETORIO;
     file.dir_entry.record.bytesFileSize = SECTOR_SIZE * superblock.SectorsPerCluster;
     file.dir_entry.record.clustersFileSize = 1;
 
-    unsigned int cluster = create_file(pathname, &file);
+    int cluster = create_file(pathname, &file);
     if(cluster < 0) return -1;
+    
     file.current_physical_cluster = cluster;
 
     // Fill directory with invalid entries
