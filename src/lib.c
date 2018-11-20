@@ -1100,7 +1100,7 @@ int set_current_pointer(int offset, struct fcb *file) {
     if(offset < -1) return -1;
 
     if(offset == -1)
-        offset = get_last_byte(file->dir_entry.record.bytesFileSize);
+        offset = get_last_byte(file->dir_entry.record.bytesFileSize) + 1;
 
     if(offset > file->dir_entry.record.bytesFileSize) return -1;
 
