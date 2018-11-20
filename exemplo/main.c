@@ -35,6 +35,9 @@ void cmdFscp(void);
 
 void cmdExit(void);
 
+void cmdCd(void);
+void cmdPwd(void);
+
 static void dump(char *buffer, int size) {
     int base, i;
     char c;
@@ -75,6 +78,8 @@ static void dump(char *buffer, int size) {
 #define	CMD_LN		14
 #define	CMD_COPY	15
 #define	CMD_FS_COPY	16
+#define	CMD_CD	17
+#define	CMD_PWD	18
 
 char helpString[][120] = {
 	"             -> finish this shell",
@@ -94,7 +99,9 @@ char helpString[][120] = {
 	"[src] [dst]  -> copy files: [src] -> [dst]",
 	"[lnk] [file] -> create link [lnk] to [file]",
 	"\n    fscp -t [src] [dst]  -> copy HostFS to T2FS"
-	"\n    fscp -f [src] [dst]  -> copy T2FS   to HostFS"
+	"\n    fscp -f [src] [dst]  -> copy T2FS   to HostFS",
+    "[path]       -> change current directory",
+    "             -> get current directory"
 };
 
 	
@@ -123,6 +130,8 @@ struct {
 	
 	{ "cp", cmdCp, CMD_COPY },
 	{ "fscp", cmdFscp, CMD_FS_COPY },
+    { "cd", cmdCd, CMD_CD },
+    { "pwd", cmdPwd, CMD_PWD },
 	{ "fim", NULL, -1 }
 };
 
@@ -740,6 +749,35 @@ void cmdCreate(void) {
     }
 
     printf ("File created with handle %d\n", hFile);
+}
+
+void cmdCd(void) {
+
+    char *token = strtok(NULL," \t");
+    if (token==NULL) {
+        printf ("Missing parameter\n");
+        return;
+    }
+
+    int err = chdir2(token);
+    if (err!=0) {
+        printf ("Error: %d\n", err);
+        return;
+    }
+
+    printf ("Changed to directory %s\n", token);
+}
+
+void cmdPwd(void) {
+    char path[1024];
+
+    int err = getcwd2 (path, 1024);
+    if (err<0) {
+        printf ("Error: %d\n", err);
+        return;
+    }
+
+    printf ("Current directory is %s\n", path);
 }
 
 /**

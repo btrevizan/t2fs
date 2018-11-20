@@ -192,7 +192,6 @@ int truncate2 (FILE2 handle) {
         }
         
         for(i = removed_clusters - 1; i >= 0; i--) {
-            printf("ok\n");
             if(clusters[i] != 0) {
                 free_cluster(clusters[i]);
                 real_removed_clusters++;
