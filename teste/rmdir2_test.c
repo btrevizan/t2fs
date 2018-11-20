@@ -23,8 +23,8 @@ int main() {
   ret_code = rmdir2("dir1");
   assert("Deve retornar um erro se o diretorio nao esta vazio", ret_code != 0);
 
-  //mkdir("empty_dir");
-  //ret_code = rmdir2("empty_dir");
+  mkdir2("empty_dir2");
+  ret_code = rmdir2("empty_dir2");
   assert("Em caso de sucesso, retorna 0", ret_code == 0);
 
   // Buscar a entrada no diretório
@@ -33,7 +33,7 @@ int main() {
 
   int found = 0;
   while (readdir2(dir_handle, &dir_entry) == 0) {
-    if (strcmp(dir_entry.name, "empty_dir") == 0) {
+    if (strcmp(dir_entry.name, "empty_dir2") == 0) {
       found = 1;
       break;
     }
