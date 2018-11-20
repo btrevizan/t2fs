@@ -49,16 +49,19 @@ FILE2 create2 (char *filename) {
         
         if(is_dir(&file.dir_entry)) return -1;
 
-        truncate2(i);   
+        if(truncate2(i) < 0) {
+            close2(i);
+            return -1;
+        }
     } else {
         file.dir_entry.record.TypeVal = TYPEVAL_REGULAR;
         file.dir_entry.record.bytesFileSize = 0;
         file.dir_entry.record.clustersFileSize = 1;
 
         if(create_file(filename, &file) < 0) return -1;
+        open_files[i] = file;
     }
 
-    open_files[i] = file;
     return i;
 }
 
@@ -114,7 +117,7 @@ int read2 (FILE2 handle, char *buffer, int size) {
     if(!is_handle_valid(handle)) return -1;
     if(open_files[handle].is_valid != 1) return -1;
 
-    struct fcb file = open_files[handle];
+    struct fcb file = open_files[handle]; 
     int result = read_file(&file, buffer, size);
 
     open_files[handle] = file;
@@ -146,25 +149,24 @@ int truncate2 (FILE2 handle) {
     if(!is_handle_valid(handle)) return -1;
     if(open_files[handle].is_valid != 1) return -1;
     
-    struct fcb file = open_files[handle];
-
-    DWORD curr_cluster = file.current_physical_cluster;
-    DWORD curr_sector = file.current_sector_on_cluster;
-    DWORD curr_byte = file.current_byte_on_sector;
+    struct fcb *file = &open_files[handle];
+    DWORD curr_cluster = file->current_physical_cluster;
+    DWORD curr_sector = file->current_sector_on_cluster;
+    DWORD curr_byte = file->current_byte_on_sector;
 
     DWORD curr_byte_on_file;
     DWORD curr_logical_cluster = 0;
 
-    file.current_physical_cluster = file.dir_entry.record.firstCluster;
+    file->current_physical_cluster = file->dir_entry.record.firstCluster;
     do {
-        if(file.current_physical_cluster == curr_cluster) break;
+        if(file->current_physical_cluster == curr_cluster) break;
         curr_logical_cluster++;
-    } while(next_cluster(&file) == 0);
+    } while(next_cluster(file) == 0);
 
     curr_byte_on_file = curr_logical_cluster * SECTOR_SIZE * superblock.SectorsPerCluster;
     curr_byte_on_file += SECTOR_SIZE * curr_sector + curr_byte;
 
-    DWORD removed_bytes = file.dir_entry.record.bytesFileSize - curr_byte_on_file;
+    DWORD removed_bytes = file->dir_entry.record.bytesFileSize - curr_byte_on_file;
     DWORD removed_clusters = ceil((float)removed_bytes / SECTOR_SIZE) / superblock.SectorsPerCluster;
     int real_removed_clusters = 0;
 
@@ -174,20 +176,20 @@ int truncate2 (FILE2 handle) {
         for(int i = 0; i < removed_clusters; i++)
             clusters[i] = 0;
 
-        if(curr_cluster != file.dir_entry.record.firstCluster) {
+        if(curr_cluster != file->dir_entry.record.firstCluster) {
             if(curr_sector == 0 && curr_byte == 0) {
                 clusters[0] = curr_cluster;
-                file.current_physical_cluster = curr_cluster;
+                file->current_physical_cluster = curr_cluster;
             }
         } else {
-            file.current_physical_cluster = curr_cluster;
-            if(next_cluster(&file) == 0)
-                clusters[0] = file.current_physical_cluster;
+            file->current_physical_cluster = curr_cluster;
+            if(next_cluster(file) == 0)
+                clusters[0] = file->current_physical_cluster;
         }
 
         int i = 1;
-        while(next_cluster(&file) && i < removed_clusters) {
-            clusters[i] = file.current_physical_cluster;
+        while(next_cluster(file) && i < removed_clusters) {
+            clusters[i] = file->current_physical_cluster;
             i++;
         }
         
@@ -199,35 +201,36 @@ int truncate2 (FILE2 handle) {
         }
     }
 
-    file.dir_entry.record.bytesFileSize -= removed_bytes;
-    file.dir_entry.record.clustersFileSize -= real_removed_clusters;
+    file->dir_entry.record.bytesFileSize -= removed_bytes;
+    file->dir_entry.record.clustersFileSize -= real_removed_clusters;
     
     if(curr_byte == 0) {
         if(curr_sector == 0) {
-            if(curr_cluster == file.dir_entry.record.firstCluster) {
-                file.current_physical_cluster = curr_cluster;
-                file.current_sector_on_cluster = 0;
-                file.current_byte_on_sector = 0;
+            if(curr_cluster == file->dir_entry.record.firstCluster) {
+                file->current_physical_cluster = curr_cluster;
+                file->current_sector_on_cluster = 0;
+                file->current_byte_on_sector = 0;
             } else {
-                file.current_physical_cluster = curr_cluster;
-                prev_cluster(&file);
+                file->current_physical_cluster = curr_cluster;
+                prev_cluster(file);
 
-                file.current_sector_on_cluster = superblock.SectorsPerCluster - 1;
-                file.current_byte_on_sector = SECTOR_SIZE;
+                file->current_sector_on_cluster = superblock.SectorsPerCluster - 1;
+                file->current_byte_on_sector = SECTOR_SIZE;
             }
         } else {
-            file.current_physical_cluster = curr_cluster;
-            file.current_sector_on_cluster = curr_sector - 1;
-            file.current_byte_on_sector = SECTOR_SIZE;
+            file->current_physical_cluster = curr_cluster;
+            file->current_sector_on_cluster = curr_sector - 1;
+            file->current_byte_on_sector = SECTOR_SIZE;
         }
     } else {
-        file.current_physical_cluster = curr_cluster;
-        file.current_sector_on_cluster = curr_sector;
-        file.current_byte_on_sector = curr_byte; 
+        file->current_physical_cluster = curr_cluster;
+        file->current_sector_on_cluster = curr_sector;
+        file->current_byte_on_sector = curr_byte; 
     }
 
-    update_on_disk(&file.dir_entry);
-    open_files[handle] = file;
+    if(update_on_disk(&file->dir_entry) < 0) return -1;
+    open_files[handle] = *(file);
+
     return 0;
 }
 
